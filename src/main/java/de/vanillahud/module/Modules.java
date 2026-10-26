@@ -368,7 +368,8 @@ public final class Modules {
     }
 
     private static void load() {
-        String def = mc().options.languageCode != null && mc().options.languageCode.startsWith("de") ? "de" : "en";
+        // Minecraft-Optionen gibt es beim Mod-Start noch nicht -> Systemsprache nehmen
+        String def = java.util.Locale.getDefault().getLanguage().equals("de") ? "de" : "en";
         I18n.setLang(def);
         try {
             if (!Files.exists(FILE)) return;
