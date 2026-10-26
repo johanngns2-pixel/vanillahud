@@ -9,5 +9,5 @@ Right Shift oeffnet ein Modul-Menue im Vanilla-Stil (Item-Icons, Standard-Button
 3. `gradle wrapper` (einmalig, wenn gradlew fehlt), dann `./gradlew build`
 4. Jar liegt in build/libs/vanillahud-1.0.0.jar -> in den mods-Ordner (mit Fabric API)
 
-Hinweis: Das Projekt wurde ohne Internet geschrieben und NICHT kompiliert. Fehler bei
+
 Methodennamen (1.21.9+ hat Input-/Rendering-API geaendert) kommen ggf. beim ersten Build.
