@@ -35,7 +35,6 @@ net.minecraft.client.Camera
 net.minecraft.world.entity.LivingEntity
 net.minecraft.world.level.Level
 net.minecraft.client.renderer.LevelRenderer
-
 net.minecraft.client.renderer.texture.DynamicTexture
 net.minecraft.util.Mth
 net.minecraft.world.InteractionResult
@@ -51,3 +50,10 @@ net.minecraft.client.renderer.FogRenderer
 net.minecraft.client.renderer.fog.FogData
 net.minecraft.core.Holder
 net.minecraft.client.multiplayer.ClientPacketListener
+net.minecraft.client.renderer.fog.environment.FogEnvironment
+net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment
+net.minecraft.client.renderer.fog.FogRenderer$FogMode
+net.minecraft.client.renderer.entity.state.AvatarRenderState
+net.minecraft.client.renderer.entity.player.AvatarRenderer
+net.minecraft.client.particle.TrackingEmitter
+net.minecraft.client.renderer.state.LevelRenderState

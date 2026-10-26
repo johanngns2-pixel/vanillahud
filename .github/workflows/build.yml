@@ -21,7 +21,7 @@ jobs:
           CP=$(grep -E 'minecraftMaven|fabric-api|fabric-.*-v[0-9]|fabric-loader|remapped' /tmp/lg/jars.txt | grep -vE 'sources|intermediary|-client-extra' | tr '\n' ':')
           : > /tmp/lg/probe.txt
           for j in $(echo $CP | tr ':' ' '); do unzip -Z1 $j 2>/dev/null | grep -iE 'fog|nametag|particle/|debug/' ; done | sort -u > /tmp/lg/classes.txt
-          while read c; do echo "=== $c" >> /tmp/lg/probe.txt; javap -p -cp "$CP" "$c" >> /tmp/lg/probe.txt 2>&1; done < .github/probe.txt
+          while read c; do echo "=== $c" >> /tmp/lg/probe.txt; javap -p -cp "$CP" "$c" >> /tmp/lg/probe.txt 2>&1 </dev/null; done < .github/probe.txt
       - name: Publish log
         if: always()
         run: |
