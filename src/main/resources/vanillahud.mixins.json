@@ -2,6 +2,13 @@
   "required": true,
   "package": "de.vanillahud.mixin",
   "compatibilityLevel": "JAVA_21",
-  "client": ["MouseHandlerMixin"],
-  "injectors": { "defaultRequire": 1 }
+  "client": [
+    "MouseHandlerMixin",
+    "OverlayTextureAccessor",
+    "FogRendererAccessor",
+    "ParticleEngineMixin",
+    "EntityRendererMixin",
+    "LevelRendererMixin"
+  ],
+  "injectors": { "defaultRequire": 0 }
 }

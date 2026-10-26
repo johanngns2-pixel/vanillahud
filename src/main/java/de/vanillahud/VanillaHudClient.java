@@ -1,10 +1,14 @@
 package de.vanillahud;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import de.vanillahud.module.Features;
 import de.vanillahud.module.HudModule;
+import de.vanillahud.module.Module;
 import de.vanillahud.module.Modules;
 import de.vanillahud.screen.ModuleScreen;
+import de.vanillahud.screen.VhScreen;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -18,6 +22,7 @@ public class VanillaHudClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         Modules.init();
+        if (Modules.get("crosshair") instanceof Features.Crosshair c) c.register();
 
         openMenu = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.vanillahud.menu",
@@ -29,14 +34,17 @@ public class VanillaHudClient implements ClientModInitializer {
             while (openMenu.consumeClick()) {
                 if (mc.screen == null) mc.setScreen(new ModuleScreen());
             }
+            Modules.tick(mc);
         });
+
+        ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> Modules.shutdown());
 
         HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
             Minecraft mc = Minecraft.getInstance();
-            // Im Editor/Menue zeichnet der Screen die Module selbst, F1 blendet das HUD aus
-            if (mc.options.hideGui || mc.screen instanceof de.vanillahud.screen.HudEditScreen) return;
-            for (HudModule m : Modules.ALL) {
-                if (m.enabled) m.render(graphics, mc);
+            // our own screens draw the modules themselves; F1 hides the HUD
+            if (mc.options.hideGui || mc.screen instanceof VhScreen) return;
+            for (Module m : Modules.ALL) {
+                if (m.enabled && m instanceof HudModule h) h.render(graphics, mc);
             }
         });
     }

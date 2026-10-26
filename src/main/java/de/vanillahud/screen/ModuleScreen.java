@@ -1,93 +1,192 @@
 package de.vanillahud.screen;
 
-import de.vanillahud.module.HudModule;
+import de.vanillahud.module.Category;
+import de.vanillahud.module.Module;
 import de.vanillahud.module.Modules;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** Das Hauptmenue: Karten mit Minecraft-Item-Icon, Name und AN/AUS-Button. */
-public class ModuleScreen extends Screen {
-    private static final int COLS = 3;
-    private static final int CARD_W = 124;
-    private static final int CARD_H = 44;
-    private static final int GAP = 6;
+/** Main menu: searchable, scrollable grid of module cards with category filter. */
+public class ModuleScreen extends VhScreen {
+    private static final int CW = 134, CH = 46, GAP = 6;
 
-    private final List<Card> cards = new ArrayList<>();
+    private static String lastQuery = "";
+    private static Category lastFilter = null;
+    private static double lastScroll = 0;
 
-    private record Card(HudModule module, int x, int y) {}
+    private EditBox search;
+    private final List<Button> catButtons = new ArrayList<>();
+    private final List<Module> shown = new ArrayList<>();
+    private Category filter = lastFilter;
+    private double scroll = lastScroll;
+    private int vTop, vBottom, cols, left;
 
     public ModuleScreen() {
-        super(Component.translatable("vanillahud.title"));
+        super(Component.literal("VanillaHud Modules"));
     }
 
     @Override
     protected void init() {
-        cards.clear();
-        int rows = (Modules.ALL.size() + COLS - 1) / COLS;
-        int totalW = COLS * CARD_W + (COLS - 1) * GAP;
-        int left = (width - totalW) / 2;
-        int top = 40;
+        catButtons.clear();
+        search = new EditBox(font, width / 2 - 100, 22, 200, 18, Component.literal("Search"));
+        search.setMaxLength(40);
+        search.setValue(lastQuery);
+        search.setResponder(s -> {
+            lastQuery = s;
+            refilter();
+        });
+        addRenderableWidget(search);
+        setInitialFocus(search);
 
-        for (int i = 0; i < Modules.ALL.size(); i++) {
-            HudModule m = Modules.ALL.get(i);
-            int cx = left + (i % COLS) * (CARD_W + GAP);
-            int cy = top + (i / COLS) * (CARD_H + GAP);
-            cards.add(new Card(m, cx, cy));
-
-            Button toggle = Button.builder(label(m), b -> {
-                m.enabled = !m.enabled;
-                b.setMessage(label(m));
-                Modules.save();
-            }).bounds(cx + 6, cy + 21, CARD_W - 12, 16).build();
-            addRenderableWidget(toggle);
+        Category[] cats = {null, Category.INFO, Category.PVP, Category.VISUAL, Category.UTILITY};
+        int bw = 62;
+        int startX = width / 2 - (cats.length * (bw + 2)) / 2 + 1;
+        for (int i = 0; i < cats.length; i++) {
+            Category c = cats[i];
+            Button b = Button.builder(catLabel(c), btn -> {
+                filter = c;
+                lastFilter = c;
+                scroll = 0;
+                refilter();
+                updateCatLabels();
+            }).bounds(startX + i * (bw + 2), 44, bw, 18).build();
+            catButtons.add(b);
+            addRenderableWidget(b);
         }
 
-        int bottom = top + rows * (CARD_H + GAP) + 6;
-        addRenderableWidget(Button.builder(Component.literal("HUD anordnen"),
-                b -> minecraft.setScreen(new HudEditScreen(this)))
-                .bounds(width / 2 - 154, bottom, 150, 20).build());
+        int by = height - 26;
+        addRenderableWidget(Button.builder(Component.literal("Arrange HUD"), b -> minecraft.setScreen(new HudEditScreen(this)))
+                .bounds(width / 2 - 206, by, 130, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Reorder Modules"), b -> minecraft.setScreen(new OrderScreen(this)))
+                .bounds(width / 2 - 65, by, 130, 20).build());
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose())
-                .bounds(width / 2 + 4, bottom, 150, 20).build());
+                .bounds(width / 2 + 76, by, 130, 20).build());
+
+        vTop = 68;
+        vBottom = height - 32;
+        refilter();
+        updateCatLabels();
     }
 
-    private static Component label(HudModule m) {
-        return Component.literal(m.enabled ? "AN" : "AUS")
-                .withStyle(m.enabled ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.RED);
+    private Component catLabel(Category c) {
+        String n = c == null ? "All" : c.label;
+        return filter == c ? Component.literal(n).withStyle(ChatFormatting.YELLOW) : Component.literal(n);
+    }
+
+    private void updateCatLabels() {
+        Category[] cats = {null, Category.INFO, Category.PVP, Category.VISUAL, Category.UTILITY};
+        for (int i = 0; i < catButtons.size(); i++) catButtons.get(i).setMessage(catLabel(cats[i]));
+    }
+
+    private void refilter() {
+        shown.clear();
+        String q = lastQuery.toLowerCase().trim();
+        for (Module m : Modules.ALL) {
+            if (filter != null && m.category != filter) continue;
+            if (!q.isEmpty() && !(m.name.toLowerCase().contains(q) || m.description.toLowerCase().contains(q) || m.id.contains(q))) continue;
+            shown.add(m);
+        }
+        cols = Math.max(1, Math.min(6, (width - 24) / (CW + GAP)));
+        left = (width - (cols * CW + (cols - 1) * GAP)) / 2;
+        clampScroll();
+    }
+
+    private int contentH() {
+        int rows = (shown.size() + cols - 1) / cols;
+        return rows * (CH + GAP);
+    }
+
+    private double maxScroll() {
+        return Math.max(0, contentH() - (vBottom - vTop));
+    }
+
+    private void clampScroll() {
+        scroll = Math.max(0, Math.min(maxScroll(), scroll));
+        lastScroll = scroll;
+    }
+
+    private int cardX(int i) {
+        return left + (i % cols) * (CW + GAP);
+    }
+
+    private int cardY(int i) {
+        return vTop + (i / cols) * (CH + GAP) - (int) scroll;
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
-        super.render(g, mouseX, mouseY, delta); // Hintergrund + Buttons (Vanilla)
-        g.drawCenteredString(font, title, width / 2, 16, 0xFFFFFFFF);
-
-        for (Card c : cards) {
-            // Karte im Vanilla-Inventar-Look: dunkle Flaeche mit hellem/dunklem Rand
-            g.fill(c.x, c.y, c.x + CARD_W, c.y + CARD_H, 0xFF373737);
-            g.fill(c.x, c.y, c.x + CARD_W, c.y + 1, 0xFFFFFFFF);
-            g.fill(c.x, c.y, c.x + 1, c.y + CARD_H, 0xFFFFFFFF);
-            g.fill(c.x, c.y + CARD_H - 1, c.x + CARD_W, c.y + CARD_H, 0xFF555555);
-            g.fill(c.x + CARD_W - 1, c.y, c.x + CARD_W, c.y + CARD_H, 0xFF555555);
-
-            g.renderItem(c.module.iconStack(), c.x + 6, c.y + 3);
-            g.drawString(font, c.module.name, c.x + 28, c.y + 7, 0xFFFFFFFF, true);
+    public void render(GuiGraphics g, int mx, int my, float delta) {
+        super.render(g, mx, my, delta);
+        g.drawCenteredString(font, title, width / 2, 8, 0xFFFFFFFF);
+        if (search.getValue().isEmpty() && !search.isFocused()) {
+            g.drawString(font, "Search modules...", search.getX() + 5, search.getY() + 5, 0xFF808080, false);
         }
-        // Buttons nochmal ueber die Karten zeichnen
-        for (var child : children()) {
-            if (child instanceof net.minecraft.client.gui.components.Renderable r) r.render(g, mouseX, mouseY, delta);
+
+        g.enableScissor(0, vTop, width, vBottom);
+        for (int i = 0; i < shown.size(); i++) {
+            Module m = shown.get(i);
+            int x = cardX(i), y = cardY(i);
+            if (y + CH < vTop || y > vBottom) continue;
+            Ui.card(g, x, y, CW, CH, m.enabled);
+            g.renderItem(new ItemStack(m.icon), x + 7, y + 4);
+            g.drawString(font, font.plainSubstrByWidth(m.name, CW - 32), x + 28, y + 8, 0xFFFFFFFF, true);
+
+            int bw = (CW - 14) / 2;
+            boolean inView = my >= vTop && my < vBottom;
+            Component state = Component.literal(m.enabled ? "ON" : "OFF").withStyle(m.enabled ? ChatFormatting.GREEN : ChatFormatting.RED);
+            Ui.button(g, font, x + 5, y + 25, bw, 16, state, inView && Ui.in(mx, my, x + 5, y + 25, bw, 16), true);
+            boolean hasSettings = !m.settings.isEmpty();
+            Ui.button(g, font, x + 9 + bw, y + 25, bw, 16, Component.literal("Settings"),
+                    inView && hasSettings && Ui.in(mx, my, x + 9 + bw, y + 25, bw, 16), hasSettings);
         }
+        g.disableScissor();
+        Ui.scrollbar(g, width - 8, vTop, vBottom, scroll, maxScroll(), Math.max(1, contentH()));
+        if (shown.isEmpty()) g.drawCenteredString(font, "No modules found", width / 2, vTop + 20, 0xFFAAAAAA);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mx = event.x(), my = event.y();
+        if (my >= vTop && my < vBottom && event.button() == 0) {
+            for (int i = 0; i < shown.size(); i++) {
+                Module m = shown.get(i);
+                int x = cardX(i), y = cardY(i);
+                int bw = (CW - 14) / 2;
+                if (Ui.in(mx, my, x + 5, y + 25, bw, 16)) {
+                    m.setEnabled(!m.enabled);
+                    Modules.save();
+                    return true;
+                }
+                if (!m.settings.isEmpty() && Ui.in(mx, my, x + 9 + bw, y + 25, bw, 16)) {
+                    minecraft.setScreen(new ModuleSettingsScreen(this, m));
+                    return true;
+                }
+            }
+            return true;
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double sx, double sy) {
+        scroll -= sy * 20;
+        clampScroll();
+        return true;
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_RIGHT_SHIFT) {
+        if (event.key() == GLFW.GLFW_KEY_RIGHT_SHIFT && !search.isFocused()) {
             onClose();
             return true;
         }
