@@ -29,7 +29,7 @@ jobs:
       - name: Publish log
         if: always()
         run: |
-          mkdir /tmp/lg && cp build.log /tmp/lg/ 2>/dev/null; cp build/libs/vanillahud-1.0.0.jar /tmp/lg/ 2>/dev/null || true
+          mkdir -p /tmp/lg; cp build.log /tmp/lg/ 2>/dev/null; cp build/libs/vanillahud-1.0.0.jar /tmp/lg/ 2>/dev/null || true
           cd /tmp/lg && git init -q -b buildlog && git config user.name ci && git config user.email ci@example.com
           git add -A && git commit -q -m "build log" --allow-empty
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" buildlog
