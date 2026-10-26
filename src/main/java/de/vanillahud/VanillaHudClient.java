@@ -18,6 +18,8 @@ import org.lwjgl.glfw.GLFW;
 
 public class VanillaHudClient implements ClientModInitializer {
     private static KeyMapping openMenu;
+    private static final boolean AUDIT = System.getProperty("vanillahud.audit") != null;
+    private static boolean audited;
 
     @Override
     public void onInitializeClient() {
@@ -35,6 +37,17 @@ public class VanillaHudClient implements ClientModInitializer {
                 if (mc.screen == null) mc.setScreen(new ModuleScreen());
             }
             Modules.tick(mc);
+            if (AUDIT && !audited && mc.level == null) {
+                audited = true;
+                try {
+                    org.spongepowered.asm.mixin.MixinEnvironment.getCurrentEnvironment().audit();
+                    System.out.println("[vanillahud-audit] mixin audit finished");
+                } catch (Throwable t) {
+                    System.out.println("[vanillahud-audit] mixin audit FAILED: " + t);
+                    t.printStackTrace();
+                }
+                mc.stop();
+            }
         });
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> Modules.shutdown());

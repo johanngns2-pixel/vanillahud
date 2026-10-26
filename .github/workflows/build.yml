@@ -12,6 +12,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build
         run: gradle build --no-daemon --stacktrace > build.log 2>&1
+      - name: Smoke test
+        if: always()
+        continue-on-error: true
+        env:
+          VH_AUDIT: "1"
+        run: |
+          mkdir -p /tmp/lg
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 >/dev/null 2>&1
+          timeout 480 xvfb-run -a gradle runClient --no-daemon > smoke.log 2>&1 || true
+          cp smoke.log /tmp/lg/ 2>/dev/null; cp run/logs/latest.log /tmp/lg/latest.log 2>/dev/null; cp run/crash-reports/*.txt /tmp/lg/ 2>/dev/null; true
       - name: Probe
         if: always()
         run: |
