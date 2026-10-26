@@ -1,5 +1,7 @@
 name: build
 on: [push, workflow_dispatch]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -8,7 +10,15 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
       - uses: gradle/actions/setup-gradle@v4
-      - run: gradle build --no-daemon
+      - name: Build
+        run: gradle build --no-daemon --stacktrace > build.log 2>&1
+      - name: Publish log
+        if: always()
+        run: |
+          mkdir /tmp/lg && cp build.log /tmp/lg/ 2>/dev/null || true
+          cd /tmp/lg && git init -q -b buildlog && git config user.name ci && git config user.email ci@example.com
+          git add -A && git commit -q -m "build log" --allow-empty
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" buildlog
       - uses: actions/upload-artifact@v4
         with:
           name: vanillahud-jar
