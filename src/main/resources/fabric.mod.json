@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "vanillahud",
+  "version": "${version}",
+  "name": "VanillaHud",
+  "description": "Right Shift Modul-Menue im Vanilla-Stil mit verschiebbaren HUD-Modulen.",
+  "authors": ["du"],
+  "environment": "client",
+  "entrypoints": { "client": ["de.vanillahud.VanillaHudClient"] },
+  "mixins": ["vanillahud.mixins.json"],
+  "depends": { "fabricloader": ">=0.18.0", "minecraft": "1.21.11", "fabric-api": "*" }
+}
