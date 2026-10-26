@@ -19,6 +19,7 @@ jobs:
           VH_AUDIT: "1"
         run: |
           mkdir -p /tmp/lg
+          sed -i 's/require = 0/require = 1/' src/main/java/de/vanillahud/mixin/*.java
           sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 >/dev/null 2>&1
           timeout 480 xvfb-run -a gradle runClient --no-daemon > smoke.log 2>&1 || true
           cp smoke.log /tmp/lg/ 2>/dev/null; cp run/logs/latest.log /tmp/lg/latest.log 2>/dev/null; cp run/crash-reports/*.txt /tmp/lg/ 2>/dev/null; true
