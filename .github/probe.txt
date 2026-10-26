@@ -40,3 +40,14 @@ net.minecraft.client.renderer.texture.DynamicTexture
 net.minecraft.util.Mth
 net.minecraft.world.InteractionResult
 net.minecraft.world.effect.MobEffects
+net.minecraft.client.renderer.entity.state.EntityRenderState
+net.minecraft.client.renderer.entity.EntityRenderer
+net.minecraft.client.particle.ParticleEngine
+net.minecraft.core.particles.ParticleOptions
+net.minecraft.core.particles.ParticleType
+net.minecraft.client.renderer.state.BlockOutlineRenderState
+net.minecraft.client.renderer.fog.FogRenderer
+net.minecraft.client.renderer.FogRenderer
+net.minecraft.client.renderer.fog.FogData
+net.minecraft.core.Holder
+net.minecraft.client.multiplayer.ClientPacketListener
