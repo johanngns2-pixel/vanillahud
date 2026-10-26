@@ -20,6 +20,12 @@ jobs:
           CP=$(grep -E 'minecraftMaven|fabric-api|fabric-.*-v[0-9]|fabric-loader|remapped' /tmp/lg/jars.txt | grep -vE 'sources|intermediary|-client-extra' | tr '\n' ':')
           : > /tmp/lg/probe.txt
           while read c; do echo "=== $c" >> /tmp/lg/probe.txt; javap -p -cp "$CP" "$c" >> /tmp/lg/probe.txt 2>&1; done < .github/probe.txt
+      - name: Class lists
+        if: always()
+        run: |
+          for j in $(grep -E 'fabric-rendering|fabric-events' /tmp/lg/jars.txt); do unzip -l "$j" | awk '{print $4}' | grep class >> /tmp/lg/fabric-classes.txt; done
+          M=$(grep minecraft-merged-deobf /tmp/lg/jars.txt | head -1)
+          unzip -l "$M" | awk '{print $4}' | grep -E 'Fog|Outline|DebugScreen|particle/|Particle|Shape|RenderType|NameTag|Nametag|Overlay' > /tmp/lg/mc-classes.txt
       - name: Publish log
         if: always()
         run: |
