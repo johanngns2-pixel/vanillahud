@@ -14,6 +14,7 @@ jobs:
         run: gradle build --no-daemon --stacktrace > build.log 2>&1 || { grep -E 'error:|FAILED|What went wrong' -A3 build.log | head -80; exit 1; }
       - name: Probe
         if: always()
+        continue-on-error: true
         run: |
           mkdir -p /tmp/lg
           find ~/.gradle -name '*.jar' -size +50k 2>/dev/null | sort > /tmp/lg/jars.txt
