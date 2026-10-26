@@ -235,7 +235,7 @@ public final class Modules {
         });
 
         TextModule hunger = text("hunger", "Hunger", "Food and saturation level.", Items.COOKED_BEEF, Category.INFO, false);
-        hunger.single(mc -> mc.player == null ? "-" : "Food: " + mc.player.getFoodLevel() + "  Sat: " + f(mc.player.getFoodData().getSaturationLevel(), 1));
+        hunger.single(mc -> mc.player == null ? "-" : "Food: " + mc.player.getFoodData().getFoodLevel() + "  Sat: " + f(mc.player.getFoodData().getSaturationLevel(), 1));
 
         TextModule session = text("session", "Session Timer", "How long you have been playing.", Items.RECOVERY_COMPASS, Category.INFO, false);
         session.single(mc -> {
