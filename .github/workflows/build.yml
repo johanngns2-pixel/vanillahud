@@ -12,6 +12,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build
         run: gradle build --no-daemon --stacktrace > build.log 2>&1
+      - name: Probe
+        if: always()
+        run: |
+          mkdir -p /tmp/lg
+          find ~/.gradle -name '*.jar' -size +50k 2>/dev/null | sort > /tmp/lg/jars.txt
+          CP=$(grep -E 'minecraftMaven|fabric-api|fabric-.*-v[0-9]|fabric-loader|remapped' /tmp/lg/jars.txt | grep -vE 'sources|intermediary|-client-extra' | tr '\n' ':')
+          : > /tmp/lg/probe.txt
+          while read c; do echo "=== $c" >> /tmp/lg/probe.txt; javap -p -cp "$CP" "$c" >> /tmp/lg/probe.txt 2>&1; done < .github/probe.txt
       - name: Publish log
         if: always()
         run: |
