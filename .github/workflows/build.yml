@@ -20,6 +20,11 @@ jobs:
           CP=$(grep -E 'minecraftMaven|fabric-api|fabric-.*-v[0-9]|fabric-loader|remapped' /tmp/lg/jars.txt | grep -vE 'sources|intermediary|-client-extra' | tr '\n' ':')
           : > /tmp/lg/probe.txt
           while read c; do echo "=== $c" >> /tmp/lg/probe.txt; javap -p -cp "$CP" "$c" >> /tmp/lg/probe.txt 2>&1; done < .github/probe.txt
+      - name: Bytecode probe
+        if: always()
+        run: |
+          CP=$(grep -E 'minecraftMaven' /tmp/lg/jars.txt | grep -vE 'sources|intermediary' | tr '\n' ':')
+          javap -p -c -cp "$CP" net.minecraft.client.renderer.entity.EntityRenderer | grep -nE "nameTag|extractRenderState|getNameTag" > /tmp/lg/bytecode.txt 2>&1 || true
       - name: Class lists
         if: always()
         run: |
@@ -29,11 +34,11 @@ jobs:
       - name: Publish log
         if: always()
         run: |
-          mkdir -p /tmp/lg; cp build.log /tmp/lg/ 2>/dev/null; cp build/libs/vanillahud-1.0.0.jar /tmp/lg/ 2>/dev/null || true
+          mkdir -p /tmp/lg; cp build.log /tmp/lg/ 2>/dev/null; cp $(ls build/libs/vanillahud-*.jar | grep -v sources | head -1) /tmp/lg/vanillahud.jar 2>/dev/null || true
           cd /tmp/lg && git init -q -b buildlog && git config user.name ci && git config user.email ci@example.com
           git add -A && git commit -q -m "build log" --allow-empty
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" buildlog
       - uses: actions/upload-artifact@v4
         with:
           name: vanillahud-jar
-          path: build/libs/vanillahud-1.0.0.jar
+          path: build/libs/vanillahud-1.1.0.jar

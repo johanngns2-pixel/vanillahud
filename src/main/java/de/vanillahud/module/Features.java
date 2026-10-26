@@ -161,7 +161,7 @@ public final class Features {
     // ------------------------------------------------------------------ Block outline
     public static class BlockOutline extends Module {
         public static BlockOutline INSTANCE;
-        public final Setting.Color color = add(new Setting.Color("color", "Outline Color", 0xFF000000, true, false));
+        public final Setting.Color color = add(new Setting.Color("color", "Outline Color", 0xFF55FFFF, true, false));
         public final Setting.Num width = add(new Setting.Num("width", "Line Width", 1, 10, 0.5, 3, "px"));
 
         public BlockOutline() {

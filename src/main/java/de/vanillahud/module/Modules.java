@@ -145,6 +145,14 @@ public final class Modules {
             };
         });
 
+        TextModule tps = text("tps", "TPS", "Estimated server ticks per second.", Items.REPEATER, Category.INFO, false);
+        Setting.Bool tpsColor = tps.add(new Setting.Bool("color", "Show Lag Warning", true));
+        tps.single(mc -> {
+            if (mc.hasSingleplayerServer() && mc.getSingleplayerServer() != null) return "TPS: 20.0";
+            double v = Tps.get();
+            return "TPS: " + f(v, 1) + (tpsColor.value && v < 15 ? " (lag)" : "");
+        });
+
         TextModule armorPts = text("armor_points", "Armor Points", "Your armor value.", Items.IRON_CHESTPLATE, Category.INFO, false);
         armorPts.single(mc -> mc.player == null ? "-" : "Armor: " + mc.player.getArmorValue());
 
@@ -311,6 +319,7 @@ public final class Modules {
         // ---------------- UTILITY
         reg(new SprintModule());
         reg(new Features.F3Menu());
+        reg(new ZoomModule());
 
         // default positions for HUD modules
         int i = 0;

@@ -47,7 +47,6 @@ public class ModuleScreen extends VhScreen {
             refilter();
         });
         addRenderableWidget(search);
-        setInitialFocus(search);
 
         Category[] cats = {null, Category.INFO, Category.PVP, Category.VISUAL, Category.UTILITY};
         int bw = 62;

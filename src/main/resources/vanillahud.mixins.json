@@ -8,7 +8,10 @@
     "FogRendererAccessor",
     "ParticleEngineMixin",
     "EntityRendererMixin",
-    "LevelRendererMixin"
+    "LevelRendererMixin",
+    "GameRendererMixin",
+    "ClientPacketListenerMixin",
+    "MouseScrollMixin"
   ],
   "injectors": { "defaultRequire": 0 }
 }
