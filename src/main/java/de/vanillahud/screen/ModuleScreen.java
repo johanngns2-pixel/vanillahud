@@ -26,7 +26,7 @@ public class ModuleScreen extends VhScreen {
     private static double lastScroll = 0;
 
     private EditBox search;
-    private final List<Button> catButtons = new ArrayList<>();
+    private final List<ThemedButton> catButtons = new ArrayList<>();
     private final List<Module> shown = new ArrayList<>();
     private Category filter = lastFilter;
     private double scroll = lastScroll;
@@ -53,7 +53,7 @@ public class ModuleScreen extends VhScreen {
         int startX = width / 2 - (cats.length * (bw + 2)) / 2 + 1;
         for (int i = 0; i < cats.length; i++) {
             Category c = cats[i];
-            Button b = ThemedButton.builder(catLabel(c), btn -> {
+            ThemedButton b = ThemedButton.builder(catLabel(c), btn -> {
                 filter = c;
                 lastFilter = c;
                 scroll = 0;

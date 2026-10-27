@@ -25,7 +25,7 @@ public class ColorPickerScreen extends VhScreen {
     private int alpha;
     private int mode; // 1 = sv, 2 = hue, 3 = alpha
     private EditBox hex;
-    private Button chromaBtn;
+    private ThemedButton chromaBtn;
     private int px, py;
 
     public ColorPickerScreen(Screen parent, Setting.Color setting) {
