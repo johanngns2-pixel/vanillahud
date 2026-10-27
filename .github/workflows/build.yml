@@ -36,6 +36,11 @@ jobs:
         run: |
           CP=$(grep -E 'minecraftMaven' /tmp/lg/jars.txt | grep -vE 'sources|intermediary' | tr '\n' ':')
           javap -p -c -cp "$CP" net.minecraft.client.renderer.entity.EntityRenderer | grep -nE "nameTag|extractRenderState|getNameTag" > /tmp/lg/bytecode.txt 2>&1 || true
+      - name: Overlay probe
+        if: always()
+        run: |
+          CP=$(grep -E 'minecraftMaven' /tmp/lg/jars.txt | grep -vE 'sources|intermediary' | tr '\n' ':')
+          { javap -p -c -constants -cp "$CP" net.minecraft.client.renderer.texture.OverlayTexture; echo ======LER; javap -p -c -cp "$CP" net.minecraft.client.renderer.entity.LivingEntityRenderer | grep -nE "getOverlayCoords|OverlayTexture|NO_OVERLAY|pack" ; echo ======ARMOR; javap -p -c -cp "$CP" net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer | grep -nE "OverlayTexture|NO_OVERLAY|getOverlay|overlay|lightCoords|submit|renderArmor" ; echo ======EQ; javap -p -c -cp "$CP" net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer | grep -nE "OverlayTexture|NO_OVERLAY|overlay|Overlay"; } > /tmp/lg/overlay.txt 2>&1 || true
       - name: Class lists
         if: always()
         run: |
