@@ -1,6 +1,6 @@
 package de.vanillahud.mixin;
 
-import com.llamalad7.mixinextras.injector.v2.ModifyReturnValue;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import de.vanillahud.module.ZoomModule;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.GameRenderer;
