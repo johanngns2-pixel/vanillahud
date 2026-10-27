@@ -179,6 +179,8 @@ public final class Features {
         public static NametagPing INSTANCE;
         public final Setting.Bool colorByPing = add(new Setting.Bool("color_by_ping", "Color By Ping", true));
         public final Setting.Bool self = add(new Setting.Bool("self", "Show On Yourself", false));
+        public final Setting.Bool live = add(new Setting.Bool("live", "Live Ping For Yourself", true));
+        public final Setting.Bool showMs = add(new Setting.Bool("show_ms", "Show 'ms' Suffix", true));
 
         public NametagPing() {
             super("nametag_ping", "Nametag Ping", "Shows the ping of players above their head.", Items.NAME_TAG, Category.VISUAL, false);
@@ -189,7 +191,7 @@ public final class Features {
             int c = 0xAAAAAA;
             if (colorByPing.value) c = ping < 80 ? 0x55FF55 : ping < 160 ? 0xFFFF55 : ping < 300 ? 0xFFAA00 : 0xFF5555;
             final int col = c;
-            return Component.empty().append(original).append(Component.literal(" " + ping + "ms").withStyle(s -> s.withColor(col)));
+            return Component.empty().append(original).append(Component.literal(" " + ping + (showMs.value ? "ms" : "")).withStyle(s -> s.withColor(col)));
         }
     }
 

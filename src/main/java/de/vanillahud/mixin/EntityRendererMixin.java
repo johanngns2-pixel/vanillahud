@@ -23,6 +23,8 @@ public class EntityRendererMixin {
         if (mc.getConnection() == null) return;
         PlayerInfo info = mc.getConnection().getPlayerInfo(p.getUUID());
         if (info == null) return;
-        state.nameTag = m.decorate(state.nameTag, info.getLatency());
+        int ping = info.getLatency();
+        if (p == mc.player && m.live.value && de.vanillahud.module.PingTracker.live() >= 0) ping = de.vanillahud.module.PingTracker.live();
+        state.nameTag = m.decorate(state.nameTag, ping);
     }
 }

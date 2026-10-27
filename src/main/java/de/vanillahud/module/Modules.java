@@ -25,6 +25,8 @@ public final class Modules {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("vanillahud.json");
     private static final Deque<Long> LEFT = new ArrayDeque<>();
     private static final Deque<Long> RIGHT = new ArrayDeque<>();
+    public static TextModule PING_MODULE;
+    public static Setting.Choice PING_MODE;
     private static final long START = System.currentTimeMillis();
 
     // combat state
@@ -117,27 +119,22 @@ public final class Modules {
         });
 
         TextModule ping = text("ping", "Ping", "Latency to the server.", Items.REDSTONE, Category.INFO, false);
-        ping.single(mc -> {
-            var c = mc.getConnection();
-            if (c == null || mc.player == null) return "-";
-            var info = c.getPlayerInfo(mc.player.getUUID());
-            return (info == null ? 0 : info.getLatency()) + " ms";
-        });
 
+        Setting.Choice pingMode = ping.add(new Setting.Choice("mode", "Update Rate", 0, "Fast (0.25s)", "Normal (1s)", "Server Value"));
         Setting.Bool pingCol = ping.add(new Setting.Bool("color_value", "Color By Value", false));
         Setting.Bool pingLabel = ping.add(new Setting.Bool("label", "Show Label", false));
         ping.tint = mc -> {
-            if (!pingCol.value || mc.getConnection() == null || mc.player == null) return null;
-            var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
-            int l = info == null ? 0 : info.getLatency();
+            int l = PingTracker.current(mc, pingMode.index == 2);
+            if (!pingCol.value || l < 0) return null;
             return l < 80 ? 0xFF55FF55 : l < 160 ? 0xFFFFFF55 : 0xFFFF5555;
         };
         ping.single(mc -> {
-            var c = mc.getConnection();
-            if (c == null || mc.player == null) return "-";
-            var info = c.getPlayerInfo(mc.player.getUUID());
-            return (pingLabel.value ? "Ping: " : "") + (info == null ? 0 : info.getLatency()) + " ms";
+            int l = PingTracker.current(mc, pingMode.index == 2);
+            if (l < 0) return "-";
+            return (pingLabel.value ? "Ping: " : "") + l + " ms";
         });
+        PING_MODULE = ping;
+        PING_MODE = pingMode;
 
         TextModule mem = text("memory", "Memory", "Java memory usage.", Items.REDSTONE_TORCH, Category.INFO, false);
         Setting.Bool memPct = mem.add(new Setting.Bool("percent", "Show Percent", false));
@@ -396,6 +393,9 @@ public final class Modules {
             if (h > lastHurt) combo = 0;
             lastHurt = h;
         }
+        boolean needPing = (PING_MODULE != null && PING_MODULE.enabled && PING_MODE.index != 2)
+                || (Features.NametagPing.INSTANCE != null && Features.NametagPing.INSTANCE.enabled && Features.NametagPing.INSTANCE.live.value);
+        if (needPing) PingTracker.tick(mc, PING_MODULE != null && PING_MODULE.enabled && PING_MODE.index == 1 ? 1000 : 250);
         for (Module m : ALL) {
             if (!m.enabled) continue;
             try {

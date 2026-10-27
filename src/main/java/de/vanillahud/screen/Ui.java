@@ -45,6 +45,21 @@ public final class Ui {
         if (accent) g.fill(x + 1, y + 1, x + 3, y + h - 1, 0xFF55FF55);
     }
 
+    /** Small description box next to the mouse. */
+    public static void tooltip(GuiGraphics g, Font font, String text, int mx, int my, int sw, int sh) {
+        var lines = font.split(Component.literal(text), 190);
+        if (lines.isEmpty()) return;
+        int w = 0;
+        for (var l : lines) w = Math.max(w, font.width(l));
+        int h = lines.size() * 10;
+        int x = Math.min(mx + 10, sw - w - 10);
+        int y = Math.max(4, Math.min(my - 6, sh - h - 10));
+        g.fill(x - 4, y - 4, x + w + 4, y + h + 2, 0xF0100010);
+        g.renderOutline(x - 4, y - 4, w + 8, h + 6, 0xFF5000B0);
+        int i = 0;
+        for (var l : lines) g.drawString(font, l, x, y + 10 * i++, 0xFFFFFFFF, true);
+    }
+
     public static void scrollbar(GuiGraphics g, int x, int top, int bottom, double scroll, double max, int contentH) {
         if (max <= 0) return;
         int h = bottom - top;

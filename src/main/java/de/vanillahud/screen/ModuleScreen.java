@@ -150,6 +150,15 @@ public class ModuleScreen extends VhScreen {
         }
         g.disableScissor();
         Ui.scrollbar(g, width - 8, vTop, vBottom, scroll, maxScroll(), Math.max(1, contentH()));
+        if (my >= vTop && my < vBottom) {
+            for (int i = 0; i < shown.size(); i++) {
+                if (Ui.in(mx, my, cardX(i), cardY(i), CW, CH)) {
+                    Module m = shown.get(i);
+                    Ui.tooltip(g, font, m.description, mx, my, width, height);
+                    break;
+                }
+            }
+        }
         if (shown.isEmpty()) g.drawCenteredString(font, "No modules found", width / 2, vTop + 20, 0xFFAAAAAA);
     }
 

@@ -25,10 +25,10 @@ public class ZoomModule extends Module {
     private boolean oldSmooth;
 
     public ZoomModule() {
-        super("zoom", "Zoom", "Hold a key (default C) to zoom in.", Items.SPYGLASS, Category.UTILITY, false);
+        super("zoom", "Zoom", "Hold a key (default Z, change it in Controls) to zoom in.", Items.SPYGLASS, Category.UTILITY, false);
         INSTANCE = this;
         key = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.vanillahud.zoom", InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_C, KeyMapping.Category.MISC));
+                GLFW.GLFW_KEY_Z, KeyMapping.Category.MISC));
     }
 
     private double target() {
