@@ -37,7 +37,11 @@ public class ModuleSettingsScreen extends Screen {
     protected void init() {
         labels.clear();
         swatches.clear();
-        int n = module.settings.size();
+        List<Setting> shown = new ArrayList<>();
+        for (Setting st : module.settings) {
+            if (st instanceof BoolSetting || st instanceof EnumSetting || st instanceof IntSetting || st instanceof ColorSetting) shown.add(st);
+        }
+        int n = shown.size();
         int avail = height - 36 - 34;
         int cols = 2;
         while (cols < 4 && ((n + cols - 1) / cols) * ROW_H > avail) cols++;
@@ -46,7 +50,7 @@ public class ModuleSettingsScreen extends Screen {
         int left = (width - total) / 2;
 
         for (int i = 0; i < n; i++) {
-            Setting s = module.settings.get(i);
+            Setting s = shown.get(i);
             int cx = left + (i % cols) * (cw + 8);
             int cy = 36 + (i / cols) * ROW_H;
             labels.add(new Label(I18n.tr("setting." + s.id), cx, cy));
@@ -77,6 +81,11 @@ public class ModuleSettingsScreen extends Screen {
                     }
                 });
                 addRenderableWidget(box);
+                String lbl = I18n.tr("setting." + s.id);
+                // Klick auf das Farbfeld oeffnet den Farbwaehler
+                addRenderableWidget(Button.builder(Component.empty(),
+                        btn -> minecraft.setScreen(new ColorPickerScreen(this, c, lbl)))
+                        .bounds(cx + cw - 20, wy, 20, 20).build());
                 swatches.add(new Swatch(c, cx + cw - 20, wy));
             }
         }

@@ -4,12 +4,14 @@ import de.vanillahud.setting.*;
 import de.vanillahud.util.I18n;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -42,6 +44,8 @@ public class HudModule {
     public Supplier<String> text;
     public Consumer<Minecraft> tick;
     public Runnable onDisable;
+    /** Optional: eigener Einstellungs-Screen (z.B. Partikel-Liste). Parameter = Elternscreen. */
+    public Function<Screen, Screen> screen;
 
     public HudModule(String id, Item icon, int x, int y, boolean enabled, boolean hud) {
         this.id = id;

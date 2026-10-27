@@ -6,95 +6,95 @@ import de.vanillahud.util.I18n;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Renderable;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-/** Hauptmenue: Karten mit Icon, Name, AN/AUS und Einstellungs-Button. Mehrere Seiten. */
-public class ModuleScreen extends Screen {
-    private static final int COLS = 3;
+/** Hauptmenue: Suchfeld oben, darunter scrollbare Karten mit Icon, Name, AN/AUS und Einstellungen. */
+public class ModuleScreen extends ScrollScreen {
     private static final int CARD_W = 140;
     private static final int CARD_H = 44;
     private static final int GAP = 6;
-    private static int lastPage = 0;
+    private static String query = "";
+    private static double savedScroll = 0;
 
+    private EditBox search;
     private final List<Card> cards = new ArrayList<>();
-    private int page;
+    private int cols = 3, left;
 
     private record Card(HudModule module, int x, int y) {}
 
     public ModuleScreen() {
         super(Component.literal("VanillaHud"));
-        this.page = lastPage;
     }
 
     @Override
     protected void init() {
-        cards.clear();
-        int top = 32;
-        int rows = Math.max(1, Math.min(4, (height - top - 62) / (CARD_H + GAP)));
-        int perPage = rows * COLS;
-        int pages = Math.max(1, (Modules.ALL.size() + perPage - 1) / perPage);
-        page = Math.max(0, Math.min(page, pages - 1));
-        lastPage = page;
+        listTop = 34;
+        listBottom = height - 34;
 
-        int totalW = COLS * CARD_W + (COLS - 1) * GAP;
-        int left = (width - totalW) / 2;
-        int from = page * perPage;
-        int to = Math.min(Modules.ALL.size(), from + perPage);
+        search = new EditBox(font, width / 2 - 100, 8, 200, 18, Component.literal("search"));
+        search.setHint(Component.literal(I18n.tr("ui.search")));
+        search.setValue(query);
+        search.setResponder(s -> {
+            query = s;
+            scroll = 0;
+            buildList();
+        });
+        addRenderableWidget(search);
 
-        for (int i = from; i < to; i++) {
-            HudModule m = Modules.ALL.get(i);
-            int idx = i - from;
-            int cx = left + (idx % COLS) * (CARD_W + GAP);
-            int cy = top + (idx / COLS) * (CARD_H + GAP);
-            cards.add(new Card(m, cx, cy));
-
-            addRenderableWidget(Button.builder(label(m), b -> {
-                m.setEnabled(!m.enabled);
-                b.setMessage(label(m));
-                Modules.save();
-            }).bounds(cx + 6, cy + 22, 46, 16).build());
-            addRenderableWidget(Button.builder(Component.literal(I18n.tr("ui.settings")),
-                    b -> minecraft.setScreen(new ModuleSettingsScreen(this, m)))
-                    .bounds(cx + 56, cy + 22, CARD_W - 62, 16).build());
-        }
-
-        int row1 = height - 52;
-        int row2 = height - 28;
-        Button prev = Button.builder(Component.literal("<"), b -> { lastPage = page - 1; minecraft.setScreen(new ModuleScreen()); })
-                .bounds(width / 2 - 154, row1, 40, 20).build();
-        prev.active = page > 0;
-        addRenderableWidget(prev);
-        Button next = Button.builder(Component.literal(">"), b -> { lastPage = page + 1; minecraft.setScreen(new ModuleScreen()); })
-                .bounds(width / 2 + 114, row1, 40, 20).build();
-        next.active = page < pages - 1;
-        addRenderableWidget(next);
-        pageLabel = I18n.tr("ui.page", page + 1, pages);
-        pageY = row1 + 6;
-
+        int bw = Math.min(100, (width - 24) / 4);
+        int by = height - 28;
+        int bx = width / 2 - (4 * bw + 3 * 4) / 2;
         addRenderableWidget(Button.builder(Component.literal(I18n.tr("ui.arrange")),
-                b -> minecraft.setScreen(new HudEditScreen(this)))
-                .bounds(width / 2 - 154, row2, 100, 20).build());
+                b -> minecraft.setScreen(new HudEditScreen(this))).bounds(bx, by, bw, 20).build());
+        addRenderableWidget(Button.builder(Component.literal(I18n.tr("ui.order")),
+                b -> minecraft.setScreen(new OrderScreen(this))).bounds(bx + bw + 4, by, bw, 20).build());
         addRenderableWidget(Button.builder(Component.literal(I18n.tr("ui.language") + ": " + I18n.langName(I18n.lang)), b -> {
             int i = 0;
             for (int k = 0; k < I18n.LANGS.length; k++) if (I18n.LANGS[k].equals(I18n.lang)) i = k;
             I18n.setLang(I18n.LANGS[(i + 1) % I18n.LANGS.length]);
             Modules.save();
-            lastPage = page;
             minecraft.setScreen(new ModuleScreen());
-        }).bounds(width / 2 - 50, row2, 100, 20).build());
+        }).bounds(bx + 2 * (bw + 4), by, bw, 20).build());
         addRenderableWidget(Button.builder(Component.literal(I18n.tr("ui.done")), b -> onClose())
-                .bounds(width / 2 + 54, row2, 100, 20).build());
+                .bounds(bx + 3 * (bw + 4), by, bw, 20).build());
+
+        buildList();
+        scroll = savedScroll;
+        clampScroll();
     }
 
-    private String pageLabel = "";
-    private int pageY;
+    private void buildList() {
+        clearItems();
+        cards.clear();
+        cols = Math.max(1, Math.min(3, (width - 24) / (CARD_W + GAP)));
+        left = (width - (cols * CARD_W + (cols - 1) * GAP)) / 2;
+        String q = query.toLowerCase(Locale.ROOT).trim();
+
+        int idx = 0;
+        for (HudModule m : Modules.ALL) {
+            if (!q.isEmpty() && !m.name().toLowerCase(Locale.ROOT).contains(q) && !m.id.contains(q)) continue;
+            int cx = left + (idx % cols) * (CARD_W + GAP);
+            int cy = (idx / cols) * (CARD_H + GAP);
+            cards.add(new Card(m, cx, cy));
+            addItem(Button.builder(label(m), b -> {
+                m.setEnabled(!m.enabled);
+                b.setMessage(label(m));
+                Modules.save();
+            }).bounds(cx + 6, 0, 46, 16).build(), cy + 22);
+            addItem(Button.builder(Component.literal(I18n.tr("ui.settings")),
+                    b -> minecraft.setScreen(m.screen != null ? m.screen.apply(this) : new ModuleSettingsScreen(this, m)))
+                    .bounds(cx + 56, 0, CARD_W - 62, 16).build(), cy + 22);
+            idx++;
+        }
+        contentH = ((idx + cols - 1) / cols) * (CARD_H + GAP);
+    }
 
     private static Component label(HudModule m) {
         return Component.literal(I18n.tr(m.enabled ? "ui.on" : "ui.off"))
@@ -102,28 +102,27 @@ public class ModuleScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
-        super.render(g, mouseX, mouseY, delta);
-        g.drawCenteredString(font, I18n.tr("ui.title"), width / 2, 14, 0xFFFFFFFF);
-        g.drawCenteredString(font, pageLabel, width / 2, pageY, 0xFFAAAAAA);
-
-        for (Card c : cards) {
-            g.fill(c.x, c.y, c.x + CARD_W, c.y + CARD_H, 0xFF373737);
-            g.fill(c.x, c.y, c.x + CARD_W, c.y + 1, 0xFFFFFFFF);
-            g.fill(c.x, c.y, c.x + 1, c.y + CARD_H, 0xFFFFFFFF);
-            g.fill(c.x, c.y + CARD_H - 1, c.x + CARD_W, c.y + CARD_H, 0xFF555555);
-            g.fill(c.x + CARD_W - 1, c.y, c.x + CARD_W, c.y + CARD_H, 0xFF555555);
-            g.renderItem(c.module.iconStack(), c.x + 6, c.y + 3);
-            g.drawString(font, c.module.name(), c.x + 28, c.y + 7, 0xFFFFFFFF, true);
+    protected void renderRows(GuiGraphics g, int mouseX, int mouseY, float delta, int top) {
+        savedScroll = scroll;
+        if (cards.isEmpty()) {
+            g.drawCenteredString(font, I18n.tr("ui.noResults"), width / 2, listTop + 20, 0xFFAAAAAA);
         }
-        for (var child : children()) {
-            if (child instanceof Renderable r) r.render(g, mouseX, mouseY, delta);
+        for (Card c : cards) {
+            int y = top + c.y;
+            if (y + CARD_H < listTop || y > listBottom) continue;
+            g.fill(c.x, y, c.x + CARD_W, y + CARD_H, 0xFF373737);
+            g.fill(c.x, y, c.x + CARD_W, y + 1, 0xFFFFFFFF);
+            g.fill(c.x, y, c.x + 1, y + CARD_H, 0xFFFFFFFF);
+            g.fill(c.x, y + CARD_H - 1, c.x + CARD_W, y + CARD_H, 0xFF555555);
+            g.fill(c.x + CARD_W - 1, y, c.x + CARD_W, y + CARD_H, 0xFF555555);
+            g.renderItem(c.module.iconStack(), c.x + 6, y + 3);
+            g.drawString(font, c.module.name(), c.x + 28, y + 7, 0xFFFFFFFF, true);
         }
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_RIGHT_SHIFT) {
+        if (event.key() == GLFW.GLFW_KEY_RIGHT_SHIFT && !search.isFocused()) {
             onClose();
             return true;
         }

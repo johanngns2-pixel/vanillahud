@@ -3,6 +3,11 @@ package de.vanillahud.module;
 import com.google.gson.*;
 import de.vanillahud.mixin.OverlayTextureAccessor;
 import de.vanillahud.module.impl.ArmorStatusModule;
+import de.vanillahud.module.impl.F3Module;
+import de.vanillahud.screen.ParticleScreen;
+import de.vanillahud.util.Colors;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.registries.BuiltInRegistries;
 import de.vanillahud.module.impl.KeystrokesModule;
 import de.vanillahud.setting.*;
 import de.vanillahud.util.I18n;
@@ -47,6 +52,13 @@ public final class Modules {
     private static double lastReach = -1;
     private static boolean sprintForced, sprintActive;
     private static int appliedHit = -1;
+    private static double tps = 20.0;
+    private static long lastTimePacket;
+    private static StringSetSetting hiddenParticles;
+    private static HudModule particlesMod, outlineMod;
+    private static ColorSetting outColor;
+    private static IntSetting outAlpha, outWidth;
+    private static BoolSetting outRainbow;
 
     private Modules() {}
 
@@ -118,6 +130,70 @@ public final class Modules {
         text(id, item, 130, y, false, () -> I18n.tr("hud." + id, count(item)));
     }
 
+    // ---------------- Hilfsfunktionen fuer Module und Mixins ----------------
+
+    public static double tps() {
+        return tps;
+    }
+
+    /** Vom ClientLevel-Mixin: der Server schickt die Zeit alle 20 Ticks. */
+    public static void onTimePacket() {
+        long now = System.nanoTime();
+        if (lastTimePacket != 0) {
+            double dt = (now - lastTimePacket) / 1.0e9;
+            if (dt > 0.05) {
+                double inst = Math.max(0.0, Math.min(20.0, 20.0 / dt));
+                tps = tps * 0.6 + inst * 0.4;
+            }
+        }
+        lastTimePacket = now;
+    }
+
+    public static int ping() {
+        var c = mc().getConnection();
+        if (c == null || pl() == null) return -1;
+        var info = c.getPlayerInfo(pl().getUUID());
+        return info == null ? 0 : info.getLatency();
+    }
+
+    public static String targetName() {
+        Minecraft m = mc();
+        if (m.level == null) return "";
+        if (m.crosshairPickEntity != null) return m.crosshairPickEntity.getName().getString();
+        if (m.hitResult instanceof BlockHitResult b && m.hitResult.getType() == HitResult.Type.BLOCK) {
+            return m.level.getBlockState(b.getBlockPos()).getBlock().getName().getString();
+        }
+        return "";
+    }
+
+    public static String worldTime() {
+        if (mc().level == null) return "-";
+        long t = mc().level.getDayTime() % 24000L;
+        return String.format("%02d:%02d", (t / 1000 + 6) % 24, (t % 1000) * 60 / 1000);
+    }
+
+    public static boolean particleHidden(String path) {
+        return particlesMod != null && particlesMod.enabled && hiddenParticles.values.contains(path);
+    }
+
+    public static boolean particleHidden(ParticleOptions o) {
+        if (particlesMod == null || !particlesMod.enabled || hiddenParticles.values.isEmpty()) return false;
+        var key = BuiltInRegistries.PARTICLE_TYPE.getKey(o.getType());
+        return key != null && hiddenParticles.values.contains(key.getPath());
+    }
+
+    /** Block-Outline: Farbe (ARGB). */
+    public static int outlineColor(int vanilla) {
+        if (outlineMod == null || !outlineMod.enabled) return vanilla;
+        int rgb = outRainbow.value ? Colors.hsvToRgb((System.currentTimeMillis() % 4000) / 4000f, 1f, 1f) : outColor.value;
+        return (Math.round(outAlpha.value * 255 / 100f) << 24) | rgb;
+    }
+
+    public static float outlineWidth(float vanilla) {
+        if (outlineMod == null || !outlineMod.enabled) return vanilla;
+        return outWidth.value;
+    }
+
     public static void init() {
         // ----- bestehende Module -----
         text("fps", Items.CLOCK, 4, 4, true, () -> mc().getFps() + " FPS");
@@ -132,12 +208,7 @@ public final class Modules {
             return String.format("XYZ: " + f + " / " + f + " / " + f, p.getX(), p.getY(), p.getZ());
         };
 
-        text("ping", Items.REDSTONE, 4, 58, false, () -> {
-            var c = mc().getConnection();
-            if (c == null || pl() == null) return "-";
-            var info = c.getPlayerInfo(pl().getUUID());
-            return (info == null ? 0 : info.getLatency()) + " ms";
-        });
+        text("ping", Items.REDSTONE, 4, 58, false, () -> ping() < 0 ? "-" : ping() + " ms");
         text("memory", Items.REDSTONE_TORCH, 4, 76, false, () -> {
             Runtime r = Runtime.getRuntime();
             return I18n.tr("hud.ram", (r.totalMemory() - r.freeMemory()) / 1048576L, r.maxMemory() / 1048576L);
@@ -212,19 +283,10 @@ public final class Modules {
             return p == null ? "-" : I18n.tr("hud.rotation", Mth.wrapDegrees(p.getYRot()), p.getXRot());
         });
         text("target", Items.SPYGLASS, 130, 130, false, () -> {
-            Minecraft m = mc();
-            if (m.level == null) return "-";
-            if (m.crosshairPickEntity != null) return I18n.tr("hud.target", m.crosshairPickEntity.getName().getString());
-            if (m.hitResult instanceof BlockHitResult b && m.hitResult.getType() == HitResult.Type.BLOCK) {
-                return I18n.tr("hud.target", m.level.getBlockState(b.getBlockPos()).getBlock().getName().getString());
-            }
-            return "";
+            String t = targetName();
+            return t.isEmpty() ? "" : I18n.tr("hud.target", t);
         });
-        text("worldtime", Items.DAYLIGHT_DETECTOR, 130, 148, false, () -> {
-            if (mc().level == null) return "-";
-            long t = mc().level.getDayTime() % 24000L;
-            return String.format("%02d:%02d", (t / 1000 + 6) % 24, (t % 1000) * 60 / 1000);
-        });
+        text("worldtime", Items.DAYLIGHT_DETECTOR, 130, 148, false, Modules::worldTime);
         text("session", Items.CLOCK, 130, 166, false, () -> {
             long s = (System.currentTimeMillis() - START) / 1000;
             return I18n.tr("hud.session", String.format("%02d:%02d:%02d", s / 3600, s / 60 % 60, s % 60));
@@ -303,6 +365,28 @@ public final class Modules {
         IntSetting ha = hit.add(new IntSetting("hitAlpha", 0, 100, 70, "%"));
         hit.tick = m -> applyHitColor(m, hc.value, ha.value);
         hit.onDisable = () -> applyHitColor(mc(), 0xFF0000, 70);
+
+        // ----- weitere neue Module -----
+        ALL.add(new F3Module(4, 4, false));
+        text("tps", Items.REPEATER, 130, 328, false, () -> I18n.tr("hud.tps", String.format("%.1f", tps)));
+        text("angle", Items.ARROW, 130, 346, false, () -> {
+            Player p = pl();
+            if (p == null) return "-";
+            float yaw = ((p.getYRot() % 360f) + 360f) % 360f;
+            String[] dirs = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+            return I18n.tr("hud.angle", String.format("%.1f", yaw), dirs[Math.round(yaw / 45f) % 8],
+                    String.format("%.1f", p.getXRot()));
+        });
+
+        particlesMod = tool("particles", Items.FIREWORK_STAR);
+        hiddenParticles = particlesMod.add(new StringSetSetting("hiddenParticles"));
+        particlesMod.screen = parent -> new ParticleScreen(parent, hiddenParticles);
+
+        outlineMod = tool("blockoutline", Items.GLASS);
+        outColor = outlineMod.add(new ColorSetting("outlineColor", 0x00FFFF));
+        outAlpha = outlineMod.add(new IntSetting("outlineAlpha", 0, 100, 100, "%"));
+        outWidth = outlineMod.add(new IntSetting("outlineWidth", 1, 10, 3, "px"));
+        outRainbow = outlineMod.add(new BoolSetting("outlineRainbow", false));
 
         // ----- Kampf-Tracking (Combo / Reach) -----
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
