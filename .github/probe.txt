@@ -1,1 +1,8 @@
-net.minecraft.client.Minecraft
+net.minecraft.client.multiplayer.ClientPacketListener
+net.minecraft.network.protocol.ping.ServerboundPingRequestPacket
+net.minecraft.network.protocol.ping.ClientboundPongResponsePacket
+net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl
+net.minecraft.Util
+net.minecraft.client.multiplayer.PlayerInfo
+net.minecraft.client.gui.GuiGraphics
+net.minecraft.client.gui.Font
