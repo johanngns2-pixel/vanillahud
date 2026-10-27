@@ -10,6 +10,8 @@ import java.util.function.Function;
 /** HUD module that shows one or more lines of text. */
 public class TextModule extends HudModule {
     public Function<Minecraft, List<String>> lines;
+    /** Optional color override (ARGB), e.g. green/yellow/red by value. */
+    public Function<Minecraft, Integer> tint;
 
     public TextModule(String id, String name, String description, Item icon, Category cat, boolean enabled) {
         super(id, name, description, icon, cat, enabled);
@@ -49,8 +51,13 @@ public class TextModule extends HudModule {
     @Override
     protected void drawContent(GuiGraphics g, Minecraft mc, int cx, int cy, int color) {
         int i = 0;
+        Integer t = null;
+        try {
+            t = tint == null ? null : tint.apply(mc);
+        } catch (Exception ignored) {
+        }
         for (String s : safe(mc)) {
-            int c = textColor.chroma ? textColor.get(i * 0.08f) : color;
+            int c = t != null ? t : textColor.chroma ? textColor.get(i * 0.08f) : color;
             g.drawString(mc.font, s, cx, cy + i * 10, c, shadow.value);
             i++;
         }

@@ -89,6 +89,8 @@ public final class Modules {
         TextModule fps = text("fps", "FPS", "Frames per second.", Items.CLOCK, Category.INFO, true);
         Setting.Bool fpsLabel = fps.add(new Setting.Bool("label", "Show Label", true));
         fps.single(mc -> mc.getFps() + (fpsLabel.value ? " FPS" : ""));
+        Setting.Bool fpsCol = fps.add(new Setting.Bool("color_value", "Color By Value", false));
+        fps.tint = mc -> !fpsCol.value ? null : mc.getFps() >= 60 ? 0xFF55FF55 : mc.getFps() >= 30 ? 0xFFFFFF55 : 0xFFFF5555;
 
         TextModule cpsM = text("cps", "CPS", "Clicks per second.", Items.IRON_SWORD, Category.PVP, true);
         Setting.Bool cpsRightB = cpsM.add(new Setting.Bool("right", "Show Right Click", true));
@@ -122,6 +124,21 @@ public final class Modules {
             return (info == null ? 0 : info.getLatency()) + " ms";
         });
 
+        Setting.Bool pingCol = ping.add(new Setting.Bool("color_value", "Color By Value", false));
+        Setting.Bool pingLabel = ping.add(new Setting.Bool("label", "Show Label", false));
+        ping.tint = mc -> {
+            if (!pingCol.value || mc.getConnection() == null || mc.player == null) return null;
+            var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
+            int l = info == null ? 0 : info.getLatency();
+            return l < 80 ? 0xFF55FF55 : l < 160 ? 0xFFFFFF55 : 0xFFFF5555;
+        };
+        ping.single(mc -> {
+            var c = mc.getConnection();
+            if (c == null || mc.player == null) return "-";
+            var info = c.getPlayerInfo(mc.player.getUUID());
+            return (pingLabel.value ? "Ping: " : "") + (info == null ? 0 : info.getLatency()) + " ms";
+        });
+
         TextModule mem = text("memory", "Memory", "Java memory usage.", Items.REDSTONE_TORCH, Category.INFO, false);
         Setting.Bool memPct = mem.add(new Setting.Bool("percent", "Show Percent", false));
         mem.single(mc -> {
@@ -152,6 +169,9 @@ public final class Modules {
             double v = Tps.get();
             return "TPS: " + f(v, 1) + (tpsColor.value && v < 15 ? " (lag)" : "");
         });
+
+        Setting.Bool tpsCol = tps.add(new Setting.Bool("color_value", "Color By Value", false));
+        tps.tint = mc -> !tpsCol.value ? null : Tps.get() >= 18 ? 0xFF55FF55 : Tps.get() >= 15 ? 0xFFFFFF55 : 0xFFFF5555;
 
         TextModule armorPts = text("armor_points", "Armor Points", "Your armor value.", Items.IRON_CHESTPLATE, Category.INFO, false);
         armorPts.single(mc -> mc.player == null ? "-" : "Armor: " + mc.player.getArmorValue());
@@ -190,9 +210,15 @@ public final class Modules {
         });
 
         TextModule ip = text("server_ip", "Server IP", "Address of the server.", Items.NAME_TAG, Category.INFO, false);
+        Setting.Bool ipPort = ip.add(new Setting.Bool("hide_port", "Hide Port", false));
+        Setting.Bool ipHide = ip.add(new Setting.Bool("hide", "Hide Address (Streamer Mode)", false));
         ip.single(mc -> {
-            var s = mc.getCurrentServer();
-            return s == null ? "Singleplayer" : s.ip;
+            var sv = mc.getCurrentServer();
+            if (sv == null) return "Singleplayer";
+            if (ipHide.value) return "Server: ********";
+            String a = sv.ip;
+            if (ipPort.value && a.contains(":")) a = a.substring(0, a.lastIndexOf(':'));
+            return a;
         });
 
         TextModule players = text("players", "Players Online", "Number of players on the server.", Items.PLAYER_HEAD, Category.INFO, false);
@@ -202,7 +228,22 @@ public final class Modules {
         xp.single(mc -> mc.player == null ? "-" : "Level " + mc.player.experienceLevel);
 
         TextModule dir = text("direction", "Direction", "The way you are facing.", Items.MAP, Category.INFO, false);
-        dir.single(mc -> mc.player == null ? "-" : "Facing: " + mc.player.getDirection().getName());
+        Setting.Bool dirShort = dir.add(new Setting.Bool("short", "Short Names", false));
+        Setting.Bool dirAxis = dir.add(new Setting.Bool("axis", "Show Axis", true));
+        dir.single(mc -> {
+            if (mc.player == null) return "-";
+            var d = mc.player.getDirection();
+            String n = d.getName();
+            String name = dirShort.value ? n.substring(0, 1).toUpperCase() : Character.toUpperCase(n.charAt(0)) + n.substring(1);
+            String axis = switch (d) {
+                case NORTH -> "-Z";
+                case SOUTH -> "+Z";
+                case EAST -> "+X";
+                case WEST -> "-X";
+                default -> "";
+            };
+            return "Facing: " + name + (dirAxis.value && !axis.isEmpty() ? " (" + axis + ")" : "");
+        });
 
         TextModule angle = text("angle", "Angle Display", "Yaw and pitch of your camera.", Items.SPYGLASS, Category.INFO, false);
         Setting.Num aDec = angle.add(new Setting.Num("decimals", "Decimals", 0, 3, 1, 1, ""));
@@ -242,6 +283,13 @@ public final class Modules {
             return "Health: " + f(v, 1);
         });
 
+        Setting.Bool hpCol = health.add(new Setting.Bool("color_value", "Color By Value", false));
+        health.tint = mc -> {
+            if (!hpCol.value || mc.player == null) return null;
+            float hp = mc.player.getHealth();
+            return hp >= 14 ? 0xFF55FF55 : hp >= 7 ? 0xFFFFFF55 : 0xFFFF5555;
+        };
+
         TextModule hunger = text("hunger", "Hunger", "Food and saturation level.", Items.COOKED_BEEF, Category.INFO, false);
         hunger.single(mc -> mc.player == null ? "-" : "Food: " + mc.player.getFoodData().getFoodLevel() + "  Sat: " + f(mc.player.getFoodData().getSaturationLevel(), 1));
 
@@ -266,9 +314,10 @@ public final class Modules {
         // ---------------- PVP
         TextModule reach = text("reach", "Reach Display", "Distance of your last hit.", Items.STICK, Category.PVP, false);
         Setting.Num reachHold = reach.add(new Setting.Num("hold", "Hold Time", 1, 15, 1, 5, "s"));
+        Setting.Num reachDec = reach.add(new Setting.Num("decimals", "Decimals", 0, 3, 1, 2, ""));
         reach.single(mc -> {
             if (lastReach < 0 || System.currentTimeMillis() - lastReachTime > reachHold.i() * 1000L) return "Reach: -";
-            return "Reach: " + f(lastReach, 2);
+            return "Reach: " + f(lastReach, reachDec.i());
         });
 
         TextModule comboM = text("combo", "Combo Counter", "Hits in a row without taking damage.", Items.BLAZE_ROD, Category.PVP, false);
@@ -292,12 +341,7 @@ public final class Modules {
 
         reg(new KeystrokesModule());
         reg(new ArmorModule());
-        reg(new ItemCounterModule("count_totems", "Totem Counter", Items.TOTEM_OF_UNDYING, Items.TOTEM_OF_UNDYING));
-        reg(new ItemCounterModule("count_gapples", "Gapple Counter", Items.GOLDEN_APPLE, Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE));
-        reg(new ItemCounterModule("count_pearls", "Pearl Counter", Items.ENDER_PEARL, Items.ENDER_PEARL));
-        reg(new ItemCounterModule("count_arrows", "Arrow Counter", Items.ARROW, Items.ARROW, Items.SPECTRAL_ARROW, Items.TIPPED_ARROW));
-        reg(new ItemCounterModule("count_crystals", "Crystal Counter", Items.END_CRYSTAL, Items.END_CRYSTAL));
-        reg(new ItemCounterModule("count_pots", "Potion Counter", Items.SPLASH_POTION, Items.SPLASH_POTION, Items.LINGERING_POTION));
+        reg(new ItemCounterModule());
         reg(new InventoryModule());
         reg(new Features.HitColor());
 
