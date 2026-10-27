@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.function.Supplier;
 
 /** All modules that are not HUD boxes. */
@@ -61,28 +60,24 @@ public final class Features {
     /** Sets a double option (0..1 scale options) to a fixed value while enabled. */
     public static class OptionScale extends Module {
         private final Supplier<OptionInstance<Double>> option;
-        private final double value;
+        public final Setting.Num strength;
         private Double old;
 
         public OptionScale(String id, String name, String desc, net.minecraft.world.item.Item icon, Supplier<OptionInstance<Double>> option, double value) {
             super(id, name, desc, icon, Category.VISUAL, false);
             this.option = option;
-            this.value = value;
+            this.strength = add(new Setting.Num("strength", "Effect Strength", 0, 100, 5, value * 100, "%"));
         }
 
-        @Override
-        public void onEnable() {
-            if (Minecraft.getInstance().options == null) return;
-            OptionInstance<Double> o = option.get();
-            if (old == null) old = o.get();
-            o.set(value);
+        private double target() {
+            return strength.value / 100.0;
         }
 
         @Override
         public void onTick(Minecraft mc) {
             OptionInstance<Double> o = option.get();
             if (old == null) old = o.get();
-            if (o.get() != value) o.set(value);
+            if (Math.abs(o.get() - target()) > 1e-6) o.set(target());
         }
 
         @Override
@@ -180,6 +175,7 @@ public final class Features {
         public final Setting.Bool colorByPing = add(new Setting.Bool("color_by_ping", "Color By Ping", true));
         public final Setting.Bool self = add(new Setting.Bool("self", "Show On Yourself", false));
         public final Setting.Bool live = add(new Setting.Bool("live", "Live Ping For Yourself", true));
+        public final Setting.Bool hideZero = add(new Setting.Bool("hide_zero", "Hide Players With 0ms (Server Gives No Ping)", true));
         public final Setting.Bool showMs = add(new Setting.Bool("show_ms", "Show 'ms' Suffix", true));
 
         public NametagPing() {
@@ -201,26 +197,34 @@ public final class Features {
         private final Map<Identifier, Setting.Bool> map = new HashMap<>();
 
         public Particles() {
-            super("particles", "Particles", "Turn single particle types on or off.", Items.FIREWORK_STAR, Category.VISUAL, false);
+            super("particles", "Particles", "Hide particles that get in the way during PvP.", Items.FIREWORK_STAR, Category.PVP, false);
             INSTANCE = this;
             add(new Setting.Action("Show All Particles", () -> map.values().forEach(b -> b.value = true)));
-            add(new Setting.Action("Hide All Particles", () -> map.values().forEach(b -> b.value = false)));
-            TreeMap<String, Identifier> sorted = new TreeMap<>();
-            for (Identifier id : BuiltInRegistries.PARTICLE_TYPE.keySet()) sorted.put(id.getPath(), id);
-            for (var e : sorted.entrySet()) {
-                Setting.Bool b = add(new Setting.Bool("p_" + e.getKey(), pretty(e.getKey()), true));
-                map.put(e.getValue(), b);
-            }
+            add(new Setting.Action("Hide All Listed Particles", () -> map.values().forEach(b -> b.value = false)));
+            group("Totem of Undying", "totem_of_undying");
+            group("Explosions", "explosion", "explosion_emitter");
+            group("Smoke", "smoke", "large_smoke");
+            group("Fire & Lava", "flame", "small_flame", "soul_fire_flame", "lava");
+            group("Critical Hits", "crit");
+            group("Enchanted Hits", "enchanted_hit");
+            group("Damage Indicators", "damage_indicator");
+            group("Sweep Attack", "sweep_attack");
+            group("Hearts", "heart");
+            group("Potion & Effect Swirls", "effect", "entity_effect", "instant_effect", "witch");
+            group("Splash & Bubbles", "splash", "bubble", "bubble_pop", "fishing");
+            group("Fireworks", "firework", "flash");
+            group("Ender Pearl & Portals", "portal", "reverse_portal");
+            group("Block Break Debris", "block", "block_crumble", "dust_pillar");
+            group("Thrown Item Break (Snowball, Pearl...)", "item", "item_snowball", "item_slime", "item_cobweb");
+            group("Mob Death Poof", "poof");
+            group("Sprint & Landing Clouds", "cloud");
+            group("Redstone & Colored Dust", "dust", "dust_color_transition");
+            group("Angry / Happy Villager", "angry_villager", "happy_villager");
         }
 
-        private static String pretty(String path) {
-            StringBuilder sb = new StringBuilder();
-            for (String part : path.split("_")) {
-                if (part.isEmpty()) continue;
-                if (sb.length() > 0) sb.append(' ');
-                sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
-            }
-            return sb.toString();
+        private void group(String name, String... paths) {
+            Setting.Bool b = add(new Setting.Bool("p_" + paths[0], "Show " + name, true));
+            for (String p : paths) map.put(Identifier.withDefaultNamespace(p), b);
         }
 
         public static boolean hidden(ParticleOptions options) {

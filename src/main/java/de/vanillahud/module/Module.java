@@ -31,6 +31,10 @@ public abstract class Module {
         return s;
     }
 
+    public boolean toggleable() {
+        return true;
+    }
+
     public boolean isHud() {
         return false;
     }

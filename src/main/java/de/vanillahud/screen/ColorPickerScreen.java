@@ -61,20 +61,19 @@ public class ColorPickerScreen extends VhScreen {
         });
         addRenderableWidget(hex);
 
-        chromaBtn = Button.builder(chromaLabel(), b -> {
+        chromaBtn = ThemedButton.builder(chromaLabel(), b -> {
             setting.chroma = !setting.chroma;
             b.setMessage(chromaLabel());
             Modules.save();
         }).bounds(rx, py + 76, 92, 18).build();
         addRenderableWidget(chromaBtn);
 
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose())
+        addRenderableWidget(ThemedButton.builder(CommonComponents.GUI_DONE, b -> onClose()).primary()
                 .bounds(width / 2 - 50, py + SZ + 100, 100, 20).build());
     }
 
     private Component chromaLabel() {
-        return Component.literal("Chroma: ").append(Component.literal(setting.chroma ? "ON" : "OFF")
-                .withStyle(setting.chroma ? ChatFormatting.GREEN : ChatFormatting.RED));
+        return Component.literal("Chroma: ").append(Ui.onOff(setting.chroma));
     }
 
     private void commit(boolean updateHex) {

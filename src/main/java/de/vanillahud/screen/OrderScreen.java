@@ -33,7 +33,7 @@ public class OrderScreen extends VhScreen {
         left = (width - rowW) / 2;
         vTop = 34;
         vBottom = height - 32;
-        addRenderableWidget(Button.builder(Component.literal("Enabled First"), b -> {
+        addRenderableWidget(ThemedButton.builder(Component.literal("Enabled First"), b -> {
             List<Module> on = new ArrayList<>(), off = new ArrayList<>();
             for (Module m : Modules.ALL) (m.enabled ? on : off).add(m);
             Modules.ALL.clear();
@@ -41,7 +41,7 @@ public class OrderScreen extends VhScreen {
             Modules.ALL.addAll(off);
             Modules.save();
         }).bounds(width / 2 - 154, height - 26, 150, 20).build());
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose())
+        addRenderableWidget(ThemedButton.builder(CommonComponents.GUI_DONE, b -> onClose()).primary()
                 .bounds(width / 2 + 4, height - 26, 150, 20).build());
     }
 
@@ -65,7 +65,7 @@ public class OrderScreen extends VhScreen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float delta) {
         super.render(g, mx, my, delta);
-        g.drawCenteredString(font, title, width / 2, 8, 0xFFFFFFFF);
+        g.drawCenteredString(font, title, width / 2, 8, Theme.I.title.get());
         g.drawCenteredString(font, "Drag a module up or down to move it", width / 2, 20, 0xFFAAAAAA);
 
         if (dragging != null) {

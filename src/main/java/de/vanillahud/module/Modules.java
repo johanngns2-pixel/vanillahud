@@ -445,6 +445,12 @@ public final class Modules {
             o.add("settings", s);
             mods.add(m.id, o);
         }
+        JsonObject th = new JsonObject();
+        for (Setting st : de.vanillahud.screen.Theme.I.settings) {
+            if (st instanceof Setting.Action) continue;
+            th.add(st.id, st.save());
+        }
+        root.add("theme", th);
         root.add("order", order);
         root.add("modules", mods);
         try {
@@ -474,6 +480,16 @@ public final class Modules {
                             st.load(s.get(st.id));
                         } catch (Exception ignored) {
                         }
+                    }
+                }
+            }
+            if (root.has("theme")) {
+                JsonObject th = root.getAsJsonObject("theme");
+                for (Setting st : de.vanillahud.screen.Theme.I.settings) {
+                    if (!th.has(st.id)) continue;
+                    try {
+                        st.load(th.get(st.id));
+                    } catch (Exception ignored) {
                     }
                 }
             }

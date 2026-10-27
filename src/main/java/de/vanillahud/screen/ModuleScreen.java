@@ -53,7 +53,7 @@ public class ModuleScreen extends VhScreen {
         int startX = width / 2 - (cats.length * (bw + 2)) / 2 + 1;
         for (int i = 0; i < cats.length; i++) {
             Category c = cats[i];
-            Button b = Button.builder(catLabel(c), btn -> {
+            Button b = ThemedButton.builder(catLabel(c), btn -> {
                 filter = c;
                 lastFilter = c;
                 scroll = 0;
@@ -64,12 +64,14 @@ public class ModuleScreen extends VhScreen {
             addRenderableWidget(b);
         }
 
+        addRenderableWidget(ThemedButton.builder(Component.literal("Theme"), b -> minecraft.setScreen(new ModuleSettingsScreen(this, Theme.I)))
+                .bounds(width - 66, 6, 60, 16).build());
         int by = height - 26;
-        addRenderableWidget(Button.builder(Component.literal("Arrange HUD"), b -> minecraft.setScreen(new HudEditScreen(this)))
+        addRenderableWidget(ThemedButton.builder(Component.literal("Arrange HUD"), b -> minecraft.setScreen(new HudEditScreen(this)))
                 .bounds(width / 2 - 206, by, 130, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Reorder Modules"), b -> minecraft.setScreen(new OrderScreen(this)))
+        addRenderableWidget(ThemedButton.builder(Component.literal("Reorder Modules"), b -> minecraft.setScreen(new OrderScreen(this)))
                 .bounds(width / 2 - 65, by, 130, 20).build());
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose())
+        addRenderableWidget(ThemedButton.builder(CommonComponents.GUI_DONE, b -> onClose()).primary()
                 .bounds(width / 2 + 76, by, 130, 20).build());
 
         vTop = 68;
@@ -80,7 +82,7 @@ public class ModuleScreen extends VhScreen {
 
     private Component catLabel(Category c) {
         String n = c == null ? "All" : c.label;
-        return filter == c ? Component.literal(n).withStyle(ChatFormatting.YELLOW) : Component.literal(n);
+        return filter == c ? Component.literal(n).withStyle(st -> st.withColor(Theme.I.accent.get() & 0xFFFFFF)) : Component.literal(n);
     }
 
     private void updateCatLabels() {
@@ -126,7 +128,7 @@ public class ModuleScreen extends VhScreen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float delta) {
         super.render(g, mx, my, delta);
-        g.drawCenteredString(font, title, width / 2, 8, 0xFFFFFFFF);
+        g.drawCenteredString(font, title, width / 2, 8, Theme.I.title.get());
         if (search.getValue().isEmpty() && !search.isFocused()) {
             g.drawString(font, "Search modules...", search.getX() + 5, search.getY() + 5, 0xFF808080, false);
         }
@@ -142,8 +144,9 @@ public class ModuleScreen extends VhScreen {
 
             int bw = (CW - 14) / 2;
             boolean inView = my >= vTop && my < vBottom;
-            Component state = Component.literal(m.enabled ? "ON" : "OFF").withStyle(m.enabled ? ChatFormatting.GREEN : ChatFormatting.RED);
-            Ui.button(g, font, x + 5, y + 25, bw, 16, state, inView && Ui.in(mx, my, x + 5, y + 25, bw, 16), true);
+            Component state = Ui.onOff(m.enabled);
+            Ui.button(g, font, x + 5, y + 25, bw, 16, state, inView && Ui.in(mx, my, x + 5, y + 25, bw, 16), true,
+                    m.enabled ? Theme.I.toggleOn.get() : Theme.I.toggleOff.get());
             boolean hasSettings = !m.settings.isEmpty();
             Ui.button(g, font, x + 9 + bw, y + 25, bw, 16, Component.literal("Settings"),
                     inView && hasSettings && Ui.in(mx, my, x + 9 + bw, y + 25, bw, 16), hasSettings);

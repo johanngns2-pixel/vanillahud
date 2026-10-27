@@ -55,11 +55,11 @@ public class ModuleSettingsScreen extends VhScreen {
             vTop += 22;
         }
         vBottom = height - 30;
-        addRenderableWidget(Button.builder(Component.literal("Reset Settings"), b -> {
+        addRenderableWidget(ThemedButton.builder(Component.literal("Reset Settings"), b -> {
             module.resetSettings();
             Modules.save();
         }).bounds(width / 2 - 154, height - 26, 150, 20).build());
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose())
+        addRenderableWidget(ThemedButton.builder(CommonComponents.GUI_DONE, b -> onClose()).primary()
                 .bounds(width / 2 + 4, height - 26, 150, 20).build());
     }
 
@@ -76,7 +76,11 @@ public class ModuleSettingsScreen extends VhScreen {
 
     // row 0 is the "Enabled" toggle (only without a search query)
     private int totalRows(List<Setting> l) {
-        return l.size() + (query.isEmpty() ? 1 : 0);
+        return l.size() + (hasEnable() ? 1 : 0);
+    }
+
+    private boolean hasEnable() {
+        return query.isEmpty() && module.toggleable();
     }
 
     private int contentH(List<Setting> l) {
@@ -94,7 +98,7 @@ public class ModuleSettingsScreen extends VhScreen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float delta) {
         super.render(g, mx, my, delta);
-        g.drawCenteredString(font, title, width / 2, 8, 0xFFFFFFFF);
+        g.drawCenteredString(font, title, width / 2, 8, Theme.I.title.get());
 
         if (module instanceof HudModule h) {
             g.fill(left, 22, left + rowW, 22 + previewH, 0xFF202020);
@@ -111,11 +115,10 @@ public class ModuleSettingsScreen extends VhScreen {
         scroll = Math.max(0, Math.min(maxScroll(rows), scroll));
         g.enableScissor(0, vTop, width, vBottom);
         int idx = 0;
-        if (query.isEmpty()) {
+        if (hasEnable()) {
             int y = rowY(idx++);
             if (y + RH > vTop && y < vBottom) {
-                Component c = Component.literal("Enabled: ").append(Component.literal(module.enabled ? "ON" : "OFF")
-                        .withStyle(module.enabled ? ChatFormatting.GREEN : ChatFormatting.RED));
+                Component c = Component.literal("Enabled: ").append(Ui.onOff(module.enabled));
                 Ui.button(g, font, left, y, rowW, RH, c, inRow(mx, my, y), true);
             }
         }
@@ -135,8 +138,7 @@ public class ModuleSettingsScreen extends VhScreen {
 
     private void drawRow(GuiGraphics g, Setting s, int y, boolean hov) {
         if (s instanceof Setting.Bool b) {
-            Component c = Component.literal(b.name + ": ").append(Component.literal(b.value ? "ON" : "OFF")
-                    .withStyle(b.value ? ChatFormatting.GREEN : ChatFormatting.RED));
+            Component c = Component.literal(b.name + ": ").append(Ui.onOff(b.value));
             Ui.button(g, font, left, y, rowW, RH, c, hov, true);
         } else if (s instanceof Setting.Num n) {
             double frac = (n.value - n.min) / (n.max - n.min);
@@ -166,7 +168,7 @@ public class ModuleSettingsScreen extends VhScreen {
         if (my >= vTop && my < vBottom && mx >= left && mx < left + rowW) {
             List<Setting> rows = rows();
             int idx = 0;
-            if (query.isEmpty()) {
+            if (hasEnable()) {
                 int y = rowY(idx++);
                 if (my >= y && my < y + RH) {
                     module.setEnabled(!module.enabled);

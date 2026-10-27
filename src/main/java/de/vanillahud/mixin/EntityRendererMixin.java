@@ -25,6 +25,7 @@ public class EntityRendererMixin {
         if (info == null) return;
         int ping = info.getLatency();
         if (p == mc.player && m.live.value && de.vanillahud.module.PingTracker.live() >= 0) ping = de.vanillahud.module.PingTracker.live();
+        if (ping <= 0 && m.hideZero.value) return;
         state.nameTag = m.decorate(state.nameTag, ping);
     }
 }
