@@ -2,6 +2,7 @@ package de.vanillahud.module;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import de.vanillahud.mixin.FogRendererAccessor;
+import de.vanillahud.mixin.OptionInstanceAccessor;
 import de.vanillahud.mixin.OverlayTextureAccessor;
 import de.vanillahud.setting.Setting;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -35,24 +36,68 @@ public final class Features {
 
     // ------------------------------------------------------------------ Fullbright
     public static class Fullbright extends Module {
+        public final Setting.Choice mode = add(new Setting.Choice("mode", "Method", 0, "Night Vision", "Gamma"));
+        public final Setting.Num gamma = add(new Setting.Num("gamma", "Gamma Brightness (Gamma Method)", 1, 15, 0.5, 10, ""));
+        public final Setting.Num darkOnly = add(new Setting.Num("dark_only", "Only Below Light Level (16 = Always)", 1, 16, 1, 16, ""));
+        private Double oldGamma;
+
         public Fullbright() {
-            super("fullbright", "Fullbright", "Permanent night vision effect (client side).", Items.GLOWSTONE, Category.VISUAL, false);
+            super("fullbright", "Fullbright", "Makes everything bright (night vision effect or gamma boost).", Items.GLOWSTONE, Category.VISUAL, false);
+        }
+
+        private boolean dark(Minecraft mc) {
+            if (darkOnly.i() >= 16 || mc.level == null || mc.player == null) return true;
+            return mc.level.getRawBrightness(mc.player.blockPosition(), 0) < darkOnly.i();
+        }
+
+        private void restoreGamma(Minecraft mc) {
+            if (oldGamma != null) {
+                try {
+                    OptionInstanceAccessor.set(mc.options.gamma(), oldGamma);
+                } catch (Throwable ignored) {
+                }
+                oldGamma = null;
+            }
+        }
+
+        private void removeNv(Minecraft mc) {
+            Player p = mc.player;
+            if (p == null) return;
+            MobEffectInstance cur = p.getEffect(MobEffects.NIGHT_VISION);
+            if (cur != null && !cur.isVisible() && !cur.showIcon()) p.removeEffect(MobEffects.NIGHT_VISION);
         }
 
         @Override
         public void onTick(Minecraft mc) {
             Player p = mc.player;
-            if (p == null) return;
-            MobEffectInstance cur = p.getEffect(MobEffects.NIGHT_VISION);
-            if (cur == null || cur.getDuration() < 400 && !cur.isInfiniteDuration()) {
-                p.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 100000, 0, false, false, false));
+            boolean on = dark(mc);
+            if (mode.is("Night Vision")) {
+                restoreGamma(mc);
+                if (p == null) return;
+                if (!on) {
+                    removeNv(mc);
+                    return;
+                }
+                MobEffectInstance cur = p.getEffect(MobEffects.NIGHT_VISION);
+                if (cur == null || cur.getDuration() < 400 && !cur.isInfiniteDuration()) {
+                    p.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 100000, 0, false, false, false));
+                }
+            } else {
+                removeNv(mc);
+                OptionInstance<Double> g = mc.options.gamma();
+                if (oldGamma == null) oldGamma = g.get();
+                try {
+                    OptionInstanceAccessor.set(g, on ? gamma.value : oldGamma);
+                } catch (Throwable ignored) {
+                }
             }
         }
 
         @Override
         public void onDisable() {
-            Player p = Minecraft.getInstance().player;
-            if (p != null) p.removeEffect(MobEffects.NIGHT_VISION);
+            Minecraft mc = Minecraft.getInstance();
+            restoreGamma(mc);
+            removeNv(mc);
         }
     }
 
@@ -88,17 +133,25 @@ public final class Features {
     }
 
     public static class NoBobbing extends Module {
+        public final Setting.Choice mode = add(new Setting.Choice("mode", "Bobbing Is Off", 0, "Always", "While Sprinting", "While Not Sprinting", "While Sneaking"));
         private Boolean old;
 
         public NoBobbing() {
-            super("no_bobbing", "No View Bobbing", "Disables the walking camera bobbing.", Items.LEAD, Category.VISUAL, false);
+            super("no_bobbing", "View Bobbing", "Turn the walking camera bobbing off, always or only in some situations.", Items.LEAD, Category.VISUAL, false);
         }
 
         @Override
         public void onTick(Minecraft mc) {
             OptionInstance<Boolean> o = mc.options.bobView();
             if (old == null) old = o.get();
-            if (o.get()) o.set(false);
+            boolean off = switch (mode.get()) {
+                case "While Sprinting" -> mc.player != null && mc.player.isSprinting();
+                case "While Not Sprinting" -> mc.player != null && !mc.player.isSprinting();
+                case "While Sneaking" -> mc.player != null && mc.player.isShiftKeyDown();
+                default -> true;
+            };
+            boolean want = !off;
+            if (o.get() != want) o.set(want);
         }
 
         @Override
@@ -318,14 +371,30 @@ public final class Features {
 
     // ------------------------------------------------------------------ No fog
     public static class NoFog extends Module {
+        public final Setting.Bool overworld = add(new Setting.Bool("overworld", "Remove In Overworld", true));
+        public final Setting.Bool nether = add(new Setting.Bool("nether", "Remove In Nether", true));
+        public final Setting.Bool end = add(new Setting.Bool("end", "Remove In The End", true));
+        public final Setting.Bool water = add(new Setting.Bool("water", "Remove Underwater Fog", false));
+        public final Setting.Bool lava = add(new Setting.Bool("lava", "Remove Lava Fog", false));
+
         public NoFog() {
-            super("no_fog", "No Fog", "Removes the fog.", Items.COBWEB, Category.VISUAL, false);
+            super("no_fog", "No Fog", "Removes the fog. Choose where in the settings.", Items.COBWEB, Category.VISUAL, false);
+        }
+
+        private boolean remove(Minecraft mc) {
+            if (mc.level == null || mc.player == null) return true;
+            if (mc.player.isInLava()) return lava.value;
+            if (mc.player.isUnderWater()) return water.value;
+            var dim = mc.level.dimension();
+            if (dim == net.minecraft.world.level.Level.NETHER) return nether.value;
+            if (dim == net.minecraft.world.level.Level.END) return end.value;
+            return overworld.value;
         }
 
         @Override
         public void onTick(Minecraft mc) {
             try {
-                FogRendererAccessor.vanillahud$setFogEnabled(false);
+                FogRendererAccessor.vanillahud$setFogEnabled(!remove(mc));
             } catch (Throwable ignored) {
             }
         }
