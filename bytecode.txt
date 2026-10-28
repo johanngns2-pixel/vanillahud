@@ -1,0 +1,10 @@
+252:       1: getfield      #272                // Field net/minecraft/client/renderer/entity/state/EntityRenderState.nameTag:Lnet/minecraft/network/chat/Component;
+257:      10: getfield      #275                // Field net/minecraft/client/renderer/entity/state/EntityRenderState.nameTagAttachment:Lnet/minecraft/world/phys/Vec3;
+260:      15: getfield      #272                // Field net/minecraft/client/renderer/entity/state/EntityRenderState.nameTag:Lnet/minecraft/network/chat/Component;
+275:  protected net.minecraft.network.chat.Component getNameTag(T);
+304:       9: invokevirtual #320                // Method extractRenderState:(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/client/renderer/entity/state/EntityRenderState;F)V
+312:  public void extractRenderState(T, S, float);
+462:     305: invokevirtual #434                // Method getNameTag:(Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/network/chat/Component;
+463:     308: putfield      #272                // Field net/minecraft/client/renderer/entity/state/EntityRenderState.nameTag:Lnet/minecraft/network/chat/Component;
+473:     328: putfield      #275                // Field net/minecraft/client/renderer/entity/state/EntityRenderState.nameTagAttachment:Lnet/minecraft/world/phys/Vec3;
+477:     336: putfield      #272                // Field net/minecraft/client/renderer/entity/state/EntityRenderState.nameTag:Lnet/minecraft/network/chat/Component;
