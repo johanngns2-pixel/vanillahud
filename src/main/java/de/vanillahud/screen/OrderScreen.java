@@ -92,13 +92,6 @@ public class OrderScreen extends VhScreen {
         if (dragging != null) drawRow(g, dragging, (int) (dragY - RH / 2), true);
         g.disableScissor();
         Ui.scrollbar(g, left + rowW + 4, vTop, vBottom, scroll, maxScroll(), Math.max(1, Modules.ALL.size() * RH));
-
-        if (dragging == null && my >= vTop && my < vBottom) {
-            int i = (int) ((my + scroll - vTop) / RH);
-            if (i >= 0 && i < Modules.ALL.size() && mx >= left && mx < left + rowW) {
-                Ui.tooltip(g, font, Modules.ALL.get(i).description, mx, my, width, height);
-            }
-        }
     }
 
     @Override

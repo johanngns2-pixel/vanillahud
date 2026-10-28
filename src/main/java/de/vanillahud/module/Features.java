@@ -179,7 +179,8 @@ public final class Features {
                 if (img == null) return;
                 for (int y = 0; y < 8; y++) for (int x = 0; x < 16; x++) img.setPixel(x, y, overlayArgb);
                 tex.upload();
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                org.slf4j.LoggerFactory.getLogger("vanillahud").warn("Hit color failed", t);
             }
         }
 
@@ -371,24 +372,44 @@ public final class Features {
 
     // ------------------------------------------------------------------ No fog
     public static class NoFog extends Module {
-        public final Setting.Bool overworld = add(new Setting.Bool("overworld", "Remove In Overworld", true));
-        public final Setting.Bool nether = add(new Setting.Bool("nether", "Remove In Nether", true));
-        public final Setting.Bool end = add(new Setting.Bool("end", "Remove In The End", true));
+        private static final String[][] GROUPS = {
+                {"plains", "Plains / Forest / Meadow", "plains,sunflower_plains,forest,flower_forest,birch_forest,old_growth_birch_forest,dark_forest,meadow,river,beach,stony_shore"},
+                {"taiga", "Taiga / Snowy", "taiga,old_growth_pine_taiga,old_growth_spruce_taiga,snowy_taiga,snowy_plains,ice_spikes,snowy_beach,frozen_river,grove,snowy_slopes"},
+                {"desert", "Desert / Badlands", "desert,badlands,eroded_badlands,wooded_badlands"},
+                {"swamp", "Swamp / Mangrove", "swamp,mangrove_swamp"},
+                {"jungle", "Jungle / Bamboo", "jungle,sparse_jungle,bamboo_jungle"},
+                {"savanna", "Savanna", "savanna,savanna_plateau,windswept_savanna"},
+                {"mountains", "Mountains / Peaks", "windswept_hills,windswept_gravelly_hills,windswept_forest,jagged_peaks,frozen_peaks,stony_peaks"},
+                {"ocean", "Ocean", "ocean,deep_ocean,cold_ocean,deep_cold_ocean,lukewarm_ocean,deep_lukewarm_ocean,warm_ocean,frozen_ocean,deep_frozen_ocean"},
+                {"special", "Mushroom / Cherry / Pale Garden", "mushroom_fields,cherry_grove,pale_garden"},
+                {"caves", "Caves / Deep Dark", "lush_caves,dripstone_caves,deep_dark"},
+                {"nether", "Nether", "nether_wastes,soul_sand_valley,crimson_forest,warped_forest,basalt_deltas"},
+                {"end", "The End", "the_end,end_highlands,end_midlands,small_end_islands,end_barrens"},
+        };
+        private final java.util.Map<String, Setting.Bool> groups = new java.util.LinkedHashMap<>();
+        private final java.util.Map<String, String> byBiome = new java.util.HashMap<>();
         public final Setting.Bool water = add(new Setting.Bool("water", "Remove Underwater Fog", false));
         public final Setting.Bool lava = add(new Setting.Bool("lava", "Remove Lava Fog", false));
+        public final Setting.Bool other = add(new Setting.Bool("other", "Remove In Other / Modded Biomes", true));
 
         public NoFog() {
-            super("no_fog", "No Fog", "Removes the fog. Choose where in the settings.", Items.COBWEB, Category.VISUAL, false);
+            super("no_fog", "No Fog", "Removes the fog. Choose per biome group in the settings.", Items.COBWEB, Category.VISUAL, false);
+            for (String[] g : GROUPS) {
+                boolean def = !g[0].equals("ocean");
+                groups.put(g[0], add(new Setting.Bool("biome_" + g[0], "Remove: " + g[1], def)));
+                for (String b : g[2].split(",")) byBiome.put(b, g[0]);
+            }
         }
 
         private boolean remove(Minecraft mc) {
             if (mc.level == null || mc.player == null) return true;
             if (mc.player.isInLava()) return lava.value;
             if (mc.player.isUnderWater()) return water.value;
-            var dim = mc.level.dimension();
-            if (dim == net.minecraft.world.level.Level.NETHER) return nether.value;
-            if (dim == net.minecraft.world.level.Level.END) return end.value;
-            return overworld.value;
+            String name = mc.level.getBiome(mc.player.blockPosition()).getRegisteredName();
+            int i = name.indexOf(':');
+            String key = byBiome.get(i >= 0 ? name.substring(i + 1) : name);
+            if (key == null) return other.value;
+            return groups.get(key).value;
         }
 
         @Override

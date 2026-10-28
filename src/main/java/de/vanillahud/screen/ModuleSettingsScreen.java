@@ -29,6 +29,7 @@ public class ModuleSettingsScreen extends VhScreen {
     private int vTop, vBottom, rowW, left, previewH;
     private Setting.Num dragging;
     private boolean hasSearch;
+    private boolean showInfo;
 
     public ModuleSettingsScreen(net.minecraft.client.gui.screens.Screen parent, Module module) {
         super(Component.literal(module.name + " Settings"));
@@ -55,6 +56,8 @@ public class ModuleSettingsScreen extends VhScreen {
             vTop += 22;
         }
         vBottom = height - 30;
+        addRenderableWidget(ThemedButton.builder(Component.literal("Info"), b -> showInfo = !showInfo)
+                .bounds(width - 66, 6, 60, 16).build());
         addRenderableWidget(ThemedButton.builder(Component.literal("Reset Settings"), b -> {
             module.resetSettings();
             Modules.save();
@@ -129,6 +132,15 @@ public class ModuleSettingsScreen extends VhScreen {
             drawRow(g, s, y, hov);
         }
         g.disableScissor();
+        if (showInfo) {
+            var lines = font.split(Component.literal(module.description), rowW - 12);
+            int ih = lines.size() * 10 + 24;
+            int iy = vTop + 4;
+            g.fill(left, iy, left + rowW, iy + ih, 0xF0101010);
+            g.renderOutline(left, iy, rowW, ih, 0xFFA0A0A0);
+            g.drawString(font, module.name, left + 6, iy + 5, Theme.I.title.get(), true);
+            for (int i = 0; i < lines.size(); i++) g.drawString(font, lines.get(i), left + 6, iy + 18 + i * 10, 0xFFDDDDDD, false);
+        }
         Ui.scrollbar(g, left + rowW + 4, vTop, vBottom, scroll, maxScroll(rows), Math.max(1, contentH(rows)));
     }
 

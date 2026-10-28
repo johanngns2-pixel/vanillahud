@@ -6,7 +6,7 @@
     "MouseHandlerMixin",
     "OverlayTextureAccessor",
     "FogRendererAccessor",
-    "OptionInstanceAccessor",
+    "OptionInstanceMixin",
     "ParticleEngineMixin",
     "EntityRendererMixin",
     "LevelRendererMixin",

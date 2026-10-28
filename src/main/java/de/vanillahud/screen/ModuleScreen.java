@@ -147,21 +147,12 @@ public class ModuleScreen extends VhScreen {
             Component state = Ui.onOff(m.enabled);
             Ui.button(g, font, x + 5, y + 25, bw, 16, state, inView && Ui.in(mx, my, x + 5, y + 25, bw, 16), true,
                     m.enabled ? Theme.I.toggleOn.get() : Theme.I.toggleOff.get());
-            boolean hasSettings = !m.settings.isEmpty();
+            boolean hasSettings = true;
             Ui.button(g, font, x + 9 + bw, y + 25, bw, 16, Component.literal("Settings"),
                     inView && hasSettings && Ui.in(mx, my, x + 9 + bw, y + 25, bw, 16), hasSettings);
         }
         g.disableScissor();
         Ui.scrollbar(g, width - 8, vTop, vBottom, scroll, maxScroll(), Math.max(1, contentH()));
-        if (my >= vTop && my < vBottom) {
-            for (int i = 0; i < shown.size(); i++) {
-                if (Ui.in(mx, my, cardX(i), cardY(i), CW, CH)) {
-                    Module m = shown.get(i);
-                    Ui.tooltip(g, font, m.description, mx, my, width, height);
-                    break;
-                }
-            }
-        }
         if (shown.isEmpty()) g.drawCenteredString(font, "No modules found", width / 2, vTop + 20, 0xFFAAAAAA);
     }
 
@@ -178,7 +169,7 @@ public class ModuleScreen extends VhScreen {
                     Modules.save();
                     return true;
                 }
-                if (!m.settings.isEmpty() && Ui.in(mx, my, x + 9 + bw, y + 25, bw, 16)) {
+                if (Ui.in(mx, my, x + 9 + bw, y + 25, bw, 16)) {
                     minecraft.setScreen(new ModuleSettingsScreen(this, m));
                     return true;
                 }
